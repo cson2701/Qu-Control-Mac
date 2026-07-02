@@ -14,5 +14,6 @@ protocol MixerController: AnyObject {
 
     func connect(to endpoint: MixerEndpoint) async
     func disconnect()
+    func shutdownMixer() async
     func setLevel(for channelID: MixerChannelID, level: FaderLevel)
 }

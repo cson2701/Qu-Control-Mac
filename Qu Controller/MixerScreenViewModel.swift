@@ -50,6 +50,10 @@ final class MixerScreenViewModel: ObservableObject {
         connectionState.phase == .connected
     }
 
+    var isShutdownAvailable: Bool {
+        connectionState.phase == .connected
+    }
+
     func toggleConnection() {
         switch connectionState.phase {
         case .connected, .connecting:
@@ -63,5 +67,11 @@ final class MixerScreenViewModel: ObservableObject {
 
     func setLevel(_ level: FaderLevel, for channelID: MixerChannelID) {
         controller.setLevel(for: channelID, level: level)
+    }
+
+    func shutdownMixer() {
+        Task {
+            await controller.shutdownMixer()
+        }
     }
 }
