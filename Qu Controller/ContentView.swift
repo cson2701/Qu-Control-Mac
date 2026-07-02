@@ -1,24 +1,107 @@
-//
-//  ContentView.swift
-//  Qu Controller
-//
-//  Created by Gavin Song on 2/7/2026.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var viewModel = MixerScreenViewModel(controller: MockMixerController())
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        HStack(spacing: 32) {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("Qu Controller")
+                    .font(.system(size: 32, weight: .semibold, design: .rounded))
+
+                Text("Baseline control surface for Main LR")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+
+                ConnectionStatusPill(connectionState: viewModel.connectionState)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Qu mixer IP")
+                        .font(.headline)
+
+                    TextField("192.168.4.198", text: $viewModel.host)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text("Port 51325")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Button(viewModel.buttonTitle) {
+                    viewModel.toggleConnection()
+                }
+                .buttonStyle(.borderedProminent)
+
+                Text(viewModel.connectionState.message)
+                    .foregroundStyle(.secondary)
+
+                Spacer(minLength: 0)
+            }
+            .frame(minWidth: 280, maxWidth: 360, maxHeight: .infinity, alignment: .topLeading)
+            .padding(24)
+            .background(Color(nsColor: .windowBackgroundColor).opacity(0.75))
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+
+            ZStack {
+                if let mainLrChannel = viewModel.mainLrChannel {
+                    VerticalFader(channel: mainLrChannel) { level in
+                        viewModel.setLevel(level, for: mainLrChannel.id)
+                    }
+                    .frame(maxHeight: .infinity)
+                } else {
+                    Text("Main LR unavailable")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
-        .padding()
+        .padding(24)
+        .frame(minWidth: 900, minHeight: 520)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(nsColor: .underPageBackgroundColor),
+                    Color(nsColor: .windowBackgroundColor)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
     }
 }
 
 #Preview {
     ContentView()
+}
+
+private struct ConnectionStatusPill: View {
+    let connectionState: MixerConnectionState
+
+    private var style: (label: String, dotColor: Color, backgroundColor: Color) {
+        switch connectionState.phase {
+        case .connected:
+            ("Connected", Color(red: 0.11, green: 0.54, blue: 0.24), Color(red: 0.9, green: 0.96, blue: 0.91))
+        case .connecting:
+            ("Connecting", Color(red: 0.76, green: 0.48, blue: 0), Color(red: 1, green: 0.95, blue: 0.84))
+        case .error:
+            ("Error", Color(red: 0.78, green: 0.16, blue: 0.16), Color(red: 0.99, green: 0.88, blue: 0.88))
+        case .disconnected:
+            ("Disconnected", Color(red: 0.4, green: 0.44, blue: 0.5), Color(red: 0.92, green: 0.94, blue: 0.96))
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(style.dotColor)
+                .frame(width: 10, height: 10)
+
+            Text(style.label)
+                .font(.headline)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(style.backgroundColor)
+        .clipShape(Capsule())
+    }
 }
