@@ -6,101 +6,12 @@ struct ContentView: View {
     @State private var isShowingMainChannelPicker = false
 
     var body: some View {
-        HStack(spacing: 32) {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(alignment: .center, spacing: 12) {
-                    Text("Qu Controller")
-                        .font(.system(size: 32, weight: .semibold, design: .rounded))
-
-                    Spacer(minLength: 0)
-
-                    Button(role: .destructive) {
-                        isShowingShutdownConfirmation = true
-                    } label: {
-                        Image(systemName: "power")
-                            .font(.headline)
-                            .frame(width: 32, height: 32)
-                            .background(
-                                Circle()
-                                    .fill(
-                                        viewModel.isShutdownAvailable
-                                            ? Color.red.opacity(0.12)
-                                            : Color.secondary.opacity(0.12)
-                                    )
-                            )
-                    }
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(viewModel.isShutdownAvailable ? Color.red : Color.secondary)
-                    .disabled(!viewModel.isShutdownAvailable)
-                    .help("Shut down the connected mixer")
-                }
-
-                Text("Choose which mixer channels appear here and in the menu bar popup.")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-
-                ConnectionStatusPill(connectionState: viewModel.connectionState)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Qu mixer IP")
-                        .font(.headline)
-
-                    TextField("192.168.4.198", text: $viewModel.host)
-                        .textFieldStyle(.roundedBorder)
-
-                    Text("Port 51325")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Button(viewModel.buttonTitle) {
-                    viewModel.toggleConnection()
-                }
-                .buttonStyle(.borderedProminent)
-
-                Button("Choose Visible Channels") {
-                    isShowingMainChannelPicker = true
-                }
-                .buttonStyle(.bordered)
-
-                DiscoveryStatusView(
-                    message: viewModel.statusMessage,
-                    isScanning: viewModel.isScanningForMixer,
-                    font: nil
-                )
-
-                Spacer(minLength: 0)
+        Group {
+            if viewModel.connectionState.phase == .connected {
+                connectedContent
+            } else {
+                disconnectedContent
             }
-            .frame(minWidth: 280, maxWidth: 360, maxHeight: .infinity, alignment: .topLeading)
-            .padding(24)
-            .background(Color(nsColor: .windowBackgroundColor).opacity(0.75))
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .sheet(isPresented: $isShowingMainChannelPicker) {
-                ChannelVisibilityPicker(viewModel: viewModel)
-                .padding(24)
-            }
-
-            Group {
-                if viewModel.visibleMainScreenChannels.isEmpty {
-                    Text("No channels selected")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ScrollView(.horizontal) {
-                        HStack(alignment: .top, spacing: 18) {
-                            ForEach(viewModel.visibleMainScreenChannels) { channel in
-                                VerticalFader(channel: channel, isEnabled: viewModel.isFaderInteractive) { level in
-                                    viewModel.setLevel(level, for: channel.id)
-                                }
-                                .frame(width: 104)
-                                .frame(maxHeight: .infinity)
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 4)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
         .padding(24)
         .frame(minWidth: 900, minHeight: 520)
@@ -126,6 +37,203 @@ struct ContentView: View {
         } message: {
             Text("This will power off the connected Qu mixer. You will need a hard power reset to turn it back on.")
         }
+        .sheet(isPresented: $isShowingMainChannelPicker) {
+            ChannelVisibilityPicker(viewModel: viewModel)
+                .padding(24)
+        }
+    }
+
+    private var connectedContent: some View {
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 24) {
+                connectedHeader
+
+                if viewModel.visibleMainScreenChannels.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 28, weight: .medium))
+                            .foregroundStyle(.secondary)
+
+                        Text("No channels selected")
+                            .font(.title3.weight(.semibold))
+
+                        Button("Choose Visible Channels") {
+                            isShowingMainChannelPicker = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 360)
+                    .foregroundStyle(.secondary)
+                } else {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack {
+                            Text("Control Surface")
+                                .font(.headline)
+
+                            Spacer(minLength: 0)
+
+                            Text("\(viewModel.visibleMainScreenChannels.count) channels")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        ScrollView(.horizontal) {
+                            HStack(alignment: .top, spacing: 14) {
+                                ForEach(viewModel.visibleMainScreenChannels) { channel in
+                                    VerticalFader(channel: channel, isEnabled: viewModel.isFaderInteractive) { level in
+                                        viewModel.setLevel(level, for: channel.id)
+                                    }
+                                    .frame(width: 96)
+                                    .frame(maxHeight: .infinity)
+                                }
+                            }
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 4)
+                        }
+                        .scrollIndicators(.visible)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 16)
+                    .background(Color(nsColor: .windowBackgroundColor).opacity(0.42))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .top)
+        }
+        .scrollIndicators(.never)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var disconnectedContent: some View {
+        VStack {
+            controlSidebar(
+                subtitle: "Connect to a Qu mixer to open the live control surface.",
+                showsChannelPicker: false
+            )
+            .frame(maxWidth: 440)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+
+    private func controlSidebar(subtitle: String, showsChannelPicker: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .center, spacing: 12) {
+                Text("Qu Controller")
+                    .font(.system(size: 32, weight: .semibold, design: .rounded))
+
+                Spacer(minLength: 0)
+            }
+
+            Text(subtitle)
+                .font(.title3)
+                .foregroundStyle(.secondary)
+
+            ConnectionStatusPill(connectionState: viewModel.connectionState)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Qu mixer IP")
+                    .font(.headline)
+
+                TextField("192.168.4.198", text: $viewModel.host)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit {
+                        if viewModel.connectionState.phase == .disconnected || viewModel.connectionState.phase == .error {
+                            viewModel.toggleConnection()
+                        }
+                    }
+
+                Text("Port 51325")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 10) {
+                Button(viewModel.buttonTitle) {
+                    viewModel.toggleConnection()
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button("Auto-Scan") {
+                    viewModel.scanForMixer()
+                }
+                .buttonStyle(.bordered)
+                .disabled(!viewModel.isAutoScanAvailable)
+            }
+
+            if showsChannelPicker {
+                Button("Choose Visible Channels") {
+                    isShowingMainChannelPicker = true
+                }
+                .buttonStyle(.bordered)
+            }
+
+            DiscoveryStatusView(
+                message: viewModel.statusMessage,
+                isScanning: viewModel.isScanningForMixer,
+                font: nil
+            )
+
+            Spacer(minLength: 0)
+        }
+        .frame(minWidth: 280, maxWidth: 360, maxHeight: .infinity, alignment: .topLeading)
+        .padding(24)
+        .background(Color(nsColor: .windowBackgroundColor).opacity(0.75))
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+    }
+
+    private var connectedHeader: some View {
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .center, spacing: 12) {
+                    Text("Qu Controller")
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+
+                    ConnectionStatusPill(connectionState: viewModel.connectionState)
+                }
+
+                Text(viewModel.statusMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 10) {
+                Button {
+                    isShowingMainChannelPicker = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.headline)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(CircularIconButtonStyle(fillColor: Color.secondary.opacity(0.12)))
+                .foregroundStyle(Color.primary)
+                .help("Choose visible channels")
+
+                Button("Disconnect") {
+                    viewModel.toggleConnection()
+                }
+                .buttonStyle(.bordered)
+
+                Button(role: .destructive) {
+                    isShowingShutdownConfirmation = true
+                } label: {
+                    Image(systemName: "power")
+                        .font(.headline)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(CircularIconButtonStyle(fillColor: Color.red.opacity(0.12)))
+                .foregroundStyle(Color.red)
+                .help("Shut down the connected mixer")
+            }
+        }
+        .padding(.horizontal, 4)
     }
 }
 
@@ -184,5 +292,19 @@ struct ConnectionStatusPill: View {
         .padding(.vertical, 8)
         .background(style.backgroundColor)
         .clipShape(Capsule())
+    }
+}
+
+private struct CircularIconButtonStyle: ButtonStyle {
+    let fillColor: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(
+                Circle()
+                    .fill(configuration.isPressed ? fillColor.opacity(1.9) : fillColor)
+            )
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
