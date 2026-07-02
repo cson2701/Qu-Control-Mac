@@ -22,13 +22,29 @@ struct MenuBarMixerView: View {
                     .scaleEffect(0.9, anchor: .trailing)
             }
 
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(viewModel.menuBarChannels) { channel in
-                    HorizontalFaderRow(
-                        channel: channel,
-                        isEnabled: viewModel.isFaderInteractive
-                    ) { level in
-                        viewModel.setLevel(level, for: channel.id)
+            Group {
+                if viewModel.connectionState.phase == .connected {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(viewModel.menuBarChannels) { channel in
+                            HorizontalFaderRow(
+                                channel: channel,
+                                isEnabled: viewModel.isFaderInteractive
+                            ) { level in
+                                viewModel.setLevel(level, for: channel.id)
+                            }
+                        }
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Connect to a Qu mixer to use menu bar controls.")
+                            .font(.subheadline)
+
+                        DiscoveryStatusView(
+                            message: viewModel.statusMessage,
+                            isScanning: viewModel.isScanningForMixer,
+                            font: .caption
+                        )
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -45,14 +61,6 @@ struct MenuBarMixerView: View {
                     viewModel.toggleConnection()
                 }
                 .buttonStyle(.borderedProminent)
-
-                DiscoveryStatusView(
-                    message: viewModel.statusMessage,
-                    isScanning: viewModel.isScanningForMixer,
-                    font: .caption
-                )
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(16)

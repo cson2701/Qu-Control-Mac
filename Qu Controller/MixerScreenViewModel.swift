@@ -10,6 +10,7 @@ import Foundation
 final class MixerScreenViewModel: ObservableObject {
     private enum StorageKey {
         static let layoutPreferences = "mixer.layoutPreferences"
+        static let lastSuccessfulHost = "mixer.lastSuccessfulHost"
     }
 
     enum DiscoveryState: Equatable {
@@ -29,6 +30,7 @@ final class MixerScreenViewModel: ObservableObject {
     private let defaultHost: String
     private let userDefaults: UserDefaults
     private var cancellables = Set<AnyCancellable>()
+    private var discoveryTask: Task<Void, Never>?
 
     init(
         controller: MixerController,
@@ -38,7 +40,7 @@ final class MixerScreenViewModel: ObservableObject {
         self.controller = controller
         self.defaultHost = defaultEndpoint.host
         self.userDefaults = userDefaults
-        host = defaultEndpoint.host
+        host = Self.loadLastSuccessfulHost(from: userDefaults) ?? defaultEndpoint.host
         channels = controller.channels
         connectionState = controller.connectionState
         layoutPreferences = Self.loadLayoutPreferences(from: userDefaults)
@@ -50,6 +52,13 @@ final class MixerScreenViewModel: ObservableObject {
         controller.connectionStatePublisher
             .receive(on: DispatchQueue.main)
             .assign(to: &$connectionState)
+
+        controller.connectionStatePublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in
+                self?.handleConnectionStateChange(state)
+            }
+            .store(in: &cancellables)
 
         startAutoDiscoveryIfNeeded()
     }
@@ -114,6 +123,10 @@ final class MixerScreenViewModel: ObservableObject {
         discoveryState == .scanning && connectionState.phase == .disconnected
     }
 
+    var isAutoScanAvailable: Bool {
+        controller is QuNetworkMixerController && connectionState.phase == .disconnected && !isScanningForMixer
+    }
+
     func toggleConnection() {
         switch connectionState.phase {
         case .connected, .connecting:
@@ -145,6 +158,14 @@ final class MixerScreenViewModel: ObservableObject {
         }
     }
 
+    func scanForMixer() {
+        guard controller is QuNetworkMixerController, !isScanningForMixer else {
+            return
+        }
+
+        startDiscovery()
+    }
+
     private func visibleChannels(for surface: MixerLayoutSurface) -> [MixerChannelState] {
         let visibleIDs = layoutPreferences.channelIDs(for: surface)
         return displayChannels.filter { visibleIDs.contains($0.id) }
@@ -170,14 +191,28 @@ final class MixerScreenViewModel: ObservableObject {
         return preferences
     }
 
+    private static func loadLastSuccessfulHost(from userDefaults: UserDefaults) -> String? {
+        guard let host = userDefaults.string(forKey: StorageKey.lastSuccessfulHost),
+              !host.isEmpty else {
+            return nil
+        }
+
+        return host
+    }
+
     private func startAutoDiscoveryIfNeeded() {
         guard controller is QuNetworkMixerController else {
             return
         }
 
+        startDiscovery()
+    }
+
+    private func startDiscovery() {
+        discoveryTask?.cancel()
         discoveryState = .scanning
 
-        Task { @MainActor [weak self] in
+        discoveryTask = Task { @MainActor [weak self] in
             guard let self else {
                 return
             }
@@ -192,5 +227,26 @@ final class MixerScreenViewModel: ObservableObject {
                 self.discoveryState = .unavailable
             }
         }
+    }
+
+    private func handleConnectionStateChange(_ state: MixerConnectionState) {
+        guard state.phase == .connected else {
+            return
+        }
+
+        discoveryTask?.cancel()
+        discoveryTask = nil
+        discoveryState = .idle
+
+        guard let successfulHost = state.endpoint?.host,
+              !successfulHost.isEmpty else {
+            return
+        }
+
+        if host != successfulHost {
+            host = successfulHost
+        }
+
+        userDefaults.set(successfulHost, forKey: StorageKey.lastSuccessfulHost)
     }
 }

@@ -32,7 +32,7 @@ These are the first delivery tasks for this project:
 | Done | [#9](https://github.com/cson2701/Qu-Control-Mac/issues/9) | Add a native menu bar mixer control surface | Show selected horizontal sliders from a menu bar popup that dismisses on focus loss |
 | Done | [#10](https://github.com/cson2701/Qu-Control-Mac/issues/10) | Set custom app and menu bar icons | Add proper icon assets for the app bundle and menu bar extra |
 | Done | [#5](https://github.com/cson2701/Qu-Control-Mac/issues/5) | Explore auto-discovering the mixer on the local network | Assess whether the app can find the mixer IP automatically |
-| Todo | [#14](https://github.com/cson2701/Qu-Control-Mac/issues/14) | Refine connection-first UI flow | Show a dedicated connection screen until the mixer connects |
+| In-progress | [#14](https://github.com/cson2701/Qu-Control-Mac/issues/14) | Refine connection-first UI flow | Show a dedicated connection screen until the mixer connects |
 
 ## Suggested Execution Order
 

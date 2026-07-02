@@ -17,21 +17,21 @@ struct VerticalFader: View {
     }
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 10) {
             Text(channel.displayName)
-                .font(.title3.weight(.semibold))
+                .font(.headline.weight(.semibold))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
-                .frame(width: 88)
+                .frame(width: 80)
 
             Text(levelLabel)
-                .font(.system(size: 28, weight: .semibold, design: .rounded))
+                .font(.system(size: 22, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
                 .fixedSize(horizontal: true, vertical: false)
-                .frame(width: 72)
+                .frame(width: 64)
 
             NativeVerticalSlider(value: channel.level.normalized, isEnabled: isEnabled) { normalized in
                 onLevelChange(FaderLevel(normalized: normalized))
@@ -43,10 +43,14 @@ struct VerticalFader: View {
             .frame(minWidth: 56, maxWidth: 56, minHeight: minimumSliderHeight, maxHeight: .infinity)
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 20)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 14)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.05), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
