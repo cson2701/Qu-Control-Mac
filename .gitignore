@@ -1,0 +1,9 @@
+.idea/
+.vscode/
+.fleet/
+*.iml
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+xcuserdata/
+DerivedData/
