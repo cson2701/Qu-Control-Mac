@@ -37,6 +37,10 @@ final class MixerScreenViewModel: ObservableObject {
         channels.first(where: { $0.id == .mainLr })
     }
 
+    var menuBarChannels: [MixerChannelState] {
+        channels
+    }
+
     var buttonTitle: String {
         switch connectionState.phase {
         case .connected, .connecting:
