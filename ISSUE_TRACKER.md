@@ -29,7 +29,8 @@ These are the first delivery tasks for this project:
 | Done | [#2](https://github.com/cson2701/Qu-Control-Mac/issues/2) | Communicate with the mixer | Reimplement the Qu TCP/MIDI connection layer in Swift and wire it into the baseline app |
 | Done | [#4](https://github.com/cson2701/Qu-Control-Mac/issues/4) | Add the ability to shut down the mixer | Add a confirmed shutdown action for a connected live mixer |
 | Todo | [#8](https://github.com/cson2701/Qu-Control-Mac/issues/8) | Add support for multiple visible mixer channels with persisted layout | Expand the screen beyond Main LR and save the visible layout locally |
-| Todo | [#9](https://github.com/cson2701/Qu-Control-Mac/issues/9) | Add a native menu bar mixer control surface | Show selected horizontal sliders from a menu bar popup that dismisses on focus loss |
+| Done | [#9](https://github.com/cson2701/Qu-Control-Mac/issues/9) | Add a native menu bar mixer control surface | Show selected horizontal sliders from a menu bar popup that dismisses on focus loss |
+| Todo | [#10](https://github.com/cson2701/Qu-Control-Mac/issues/10) | Set custom app and menu bar icons | Add proper icon assets for the app bundle and menu bar extra |
 | Todo | [#5](https://github.com/cson2701/Qu-Control-Mac/issues/5) | Explore auto-discovering the mixer on the local network | Assess whether the app can find the mixer IP automatically |
 
 ## Suggested Execution Order
@@ -39,7 +40,8 @@ These are the first delivery tasks for this project:
 3. `#4` Add the ability to shut down the mixer
 4. `#8` Add support for multiple visible mixer channels with persisted layout
 5. `#9` Add a native menu bar mixer control surface
-6. `#5` Explore auto-discovering the mixer on the local network
+6. `#10` Set custom app and menu bar icons
+7. `#5` Explore auto-discovering the mixer on the local network
 
 ## Notes
 

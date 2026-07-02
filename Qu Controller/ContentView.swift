@@ -1,16 +1,8 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel: MixerScreenViewModel
+    @ObservedObject var viewModel: MixerScreenViewModel
     @State private var isShowingShutdownConfirmation = false
-
-    init() {
-        _viewModel = StateObject(
-            wrappedValue: MixerScreenViewModel(
-                controller: MixerControllerFactory.makeMixerController()
-            )
-        )
-    }
 
     var body: some View {
         HStack(spacing: 32) {
@@ -115,11 +107,13 @@ struct ContentView: View {
     }
 }
 
-#Preview {
-    ContentView()
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView(viewModel: MixerScreenViewModel(controller: MockMixerController()))
+    }
 }
 
-private struct ConnectionStatusPill: View {
+struct ConnectionStatusPill: View {
     let connectionState: MixerConnectionState
 
     private var style: (label: String, dotColor: Color, backgroundColor: Color) {
