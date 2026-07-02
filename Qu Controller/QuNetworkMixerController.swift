@@ -7,6 +7,8 @@ import Combine
 import Foundation
 import Network
 
+// Protocol reference:
+// docs/IMPLEMENTATION_REFERENCES.md
 @MainActor
 final class QuNetworkMixerController: MixerController {
     @Published private var storedChannels: [MixerChannelState] = [
