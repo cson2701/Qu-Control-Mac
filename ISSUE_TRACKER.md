@@ -25,7 +25,7 @@ These are the first delivery tasks for this project:
 
 | Status | Task | Title | Notes |
 |--------|------|-------|-------|
-| Todo | [#1](https://github.com/cson2701/Qu-Control-Mac/issues/1) | Create the UI and baseline code | Port the Kotlin app structure to SwiftUI, including the Main LR fader screen, baseline models, state, and mock controller |
+| Done | [#1](https://github.com/cson2701/Qu-Control-Mac/issues/1) | Create the UI and baseline code | Port the Kotlin app structure to SwiftUI, including the Main LR fader screen, baseline models, state, and mock controller |
 | Todo | [#2](https://github.com/cson2701/Qu-Control-Mac/issues/2) | Communicate with the mixer | Reimplement the Qu TCP/MIDI connection layer in Swift and wire it into the baseline app |
 
 ## Suggested Execution Order
