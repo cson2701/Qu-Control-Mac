@@ -46,6 +46,10 @@ final class MixerScreenViewModel: ObservableObject {
         }
     }
 
+    var isFaderInteractive: Bool {
+        connectionState.phase == .connected
+    }
+
     func toggleConnection() {
         switch connectionState.phase {
         case .connected, .connecting:

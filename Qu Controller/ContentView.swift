@@ -1,7 +1,15 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel = MixerScreenViewModel(controller: MockMixerController())
+    @StateObject private var viewModel: MixerScreenViewModel
+
+    init() {
+        _viewModel = StateObject(
+            wrappedValue: MixerScreenViewModel(
+                controller: MixerControllerFactory.makeMixerController()
+            )
+        )
+    }
 
     var body: some View {
         HStack(spacing: 32) {
@@ -44,7 +52,7 @@ struct ContentView: View {
 
             ZStack {
                 if let mainLrChannel = viewModel.mainLrChannel {
-                    VerticalFader(channel: mainLrChannel) { level in
+                    VerticalFader(channel: mainLrChannel, isEnabled: viewModel.isFaderInteractive) { level in
                         viewModel.setLevel(level, for: mainLrChannel.id)
                     }
                     .frame(maxHeight: .infinity)
