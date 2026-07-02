@@ -12,16 +12,19 @@ struct VerticalFader: View {
     let onLevelChange: (FaderLevel) -> Void
 
     private let minimumSliderHeight: CGFloat = 280
+    private var levelLabel: String {
+        isEnabled ? "\(channel.level.percentage)%" : "--"
+    }
 
     var body: some View {
         VStack(spacing: 14) {
             Text(channel.id.displayName)
                 .font(.title3.weight(.semibold))
 
-            Text("\(channel.level.percentage)%")
+            Text(levelLabel)
                 .font(.system(size: 28, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(.tint)
+                .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
                 .fixedSize(horizontal: true, vertical: false)

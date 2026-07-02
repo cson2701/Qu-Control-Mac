@@ -63,6 +63,10 @@ private struct HorizontalFaderRow: View {
     let isEnabled: Bool
     let onLevelChange: (FaderLevel) -> Void
 
+    private var levelLabel: String {
+        isEnabled ? "\(channel.level.percentage)%" : "--"
+    }
+
     private var levelBinding: Binding<Double> {
         Binding(
             get: { channel.level.normalized },
@@ -78,7 +82,7 @@ private struct HorizontalFaderRow: View {
 
                 Spacer(minLength: 0)
 
-                Text("\(channel.level.percentage)%")
+                Text(levelLabel)
                     .font(.system(.body, design: .rounded).weight(.semibold))
                     .monospacedDigit()
                     .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)

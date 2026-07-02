@@ -34,11 +34,21 @@ final class MixerScreenViewModel: ObservableObject {
     }
 
     var mainLrChannel: MixerChannelState? {
-        channels.first(where: { $0.id == .mainLr })
+        displayChannels.first(where: { $0.id == .mainLr })
     }
 
     var menuBarChannels: [MixerChannelState] {
-        channels
+        displayChannels
+    }
+
+    private var displayChannels: [MixerChannelState] {
+        guard connectionState.phase == .connected else {
+            return channels.map { channel in
+                MixerChannelState(id: channel.id, level: FaderLevel(normalized: 0))
+            }
+        }
+
+        return channels
     }
 
     var buttonTitle: String {
