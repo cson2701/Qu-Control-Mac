@@ -57,6 +57,14 @@ final class MockMixerController: MixerController {
         )
     }
 
+    func shutdownMixer() async {
+        storedConnectionState = MixerConnectionState(
+            phase: .disconnected,
+            message: "Mock shutdown complete",
+            endpoint: nil
+        )
+    }
+
     func setLevel(for channelID: MixerChannelID, level: FaderLevel) {
         storedChannels = storedChannels.map { channel in
             guard channel.id == channelID else {

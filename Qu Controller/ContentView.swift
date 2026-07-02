@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel: MixerScreenViewModel
+    @State private var isShowingShutdownConfirmation = false
 
     init() {
         _viewModel = StateObject(
@@ -14,8 +15,32 @@ struct ContentView: View {
     var body: some View {
         HStack(spacing: 32) {
             VStack(alignment: .leading, spacing: 18) {
-                Text("Qu Controller")
-                    .font(.system(size: 32, weight: .semibold, design: .rounded))
+                HStack(alignment: .center, spacing: 12) {
+                    Text("Qu Controller")
+                        .font(.system(size: 32, weight: .semibold, design: .rounded))
+
+                    Spacer(minLength: 0)
+
+                    Button(role: .destructive) {
+                        isShowingShutdownConfirmation = true
+                    } label: {
+                        Image(systemName: "power")
+                            .font(.headline)
+                            .frame(width: 32, height: 32)
+                            .background(
+                                Circle()
+                                    .fill(
+                                        viewModel.isShutdownAvailable
+                                            ? Color.red.opacity(0.12)
+                                            : Color.secondary.opacity(0.12)
+                                    )
+                            )
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(viewModel.isShutdownAvailable ? Color.red : Color.secondary)
+                    .disabled(!viewModel.isShutdownAvailable)
+                    .help("Shut down the connected mixer")
+                }
 
                 Text("Baseline control surface for Main LR")
                     .font(.title3)
@@ -75,6 +100,18 @@ struct ContentView: View {
                 endPoint: .bottomTrailing
             )
         )
+        .confirmationDialog(
+            "Shut Down Mixer",
+            isPresented: $isShowingShutdownConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Shut Down Mixer", role: .destructive) {
+                viewModel.shutdownMixer()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will power off the connected Qu mixer. You will need a hard power reset to turn it back on.")
+        }
     }
 }
 

@@ -72,6 +72,30 @@ final class QuNetworkMixerController: MixerController {
         }
     }
 
+    func shutdownMixer() async {
+        guard connectionState.phase == .connected, let midiChannel else {
+            storedConnectionState = MixerConnectionState(
+                phase: .error,
+                message: "Shutdown unavailable: Connect to a mixer first",
+                endpoint: storedConnectionState.endpoint
+            )
+            return
+        }
+
+        do {
+            try await sendRemoteShutdown(midiChannel: midiChannel)
+            let endpoint = storedConnectionState.endpoint
+            await disconnectTransport(updateState: false, intentional: true)
+            storedConnectionState = MixerConnectionState(
+                phase: .disconnected,
+                message: "Shutdown command sent. Mixer is powering off.",
+                endpoint: endpoint
+            )
+        } catch {
+            await handleConnectionFailure(error, endpoint: storedConnectionState.endpoint, prefix: "Shutdown failed")
+        }
+    }
+
     func setLevel(for channelID: MixerChannelID, level: FaderLevel) {
         storedChannels = storedChannels.map { channel in
             guard channel.id == channelID else {
@@ -239,6 +263,16 @@ final class QuNetworkMixerController: MixerController {
             status, 0x62, parameterID,
             status, 0x06, value,
             status, 0x26, index
+        ])
+    }
+
+    private func sendRemoteShutdown(midiChannel: UInt8) async throws {
+        let status = 0xB0 | midiChannel
+        try await sendBytes([
+            status, 0x63, 0x00,
+            status, 0x62, 0x5F,
+            status, 0x06, 0x00,
+            status, 0x26, 0x00
         ])
     }
 
