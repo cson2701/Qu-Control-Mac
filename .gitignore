@@ -5,5 +5,8 @@
 *.xcuserstate
 *.xccheckout
 *.xcscmblueprint
+# Xcode user-specific data
 xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
 DerivedData/
