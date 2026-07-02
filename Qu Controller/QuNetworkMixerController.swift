@@ -11,9 +11,7 @@ import Network
 // docs/IMPLEMENTATION_REFERENCES.md
 @MainActor
 final class QuNetworkMixerController: MixerController {
-    @Published private var storedChannels: [MixerChannelState] = [
-        MixerChannelState(id: .mainLr, level: FaderLevel(normalized: 0.72))
-    ]
+    @Published private var storedChannels: [MixerChannelState] = QuNetworkMixerController.makeInitialChannels()
     @Published private var storedConnectionState = MixerConnectionState(
         phase: .disconnected,
         message: "Disconnected",
@@ -103,10 +101,10 @@ final class QuNetworkMixerController: MixerController {
             guard channel.id == channelID else {
                 return channel
             }
-            return MixerChannelState(id: channel.id, level: level)
+            return MixerChannelState(id: channel.id, level: level, customName: channel.customName)
         }
 
-        guard channelID == .mainLr, let midiChannel else {
+        guard let midiChannel else {
             return
         }
 
@@ -114,7 +112,7 @@ final class QuNetworkMixerController: MixerController {
             do {
                 try await sendNRPN(
                     midiChannel: midiChannel,
-                    targetChannel: 0x67,
+                    targetChannel: channelID.midiChannelCode,
                     parameterID: 0x17,
                     value: UInt8(level.toMIDIValue()),
                     index: 0x07
@@ -252,6 +250,18 @@ final class QuNetworkMixerController: MixerController {
         try await sendBytes([0xF0, 0x00, 0x00, 0x1A, 0x50, 0x11, 0x01, 0x00, 0x7F, 0x10, 0x01, 0xF7])
     }
 
+    private func requestChannelNames() async throws {
+        guard let midiChannel else {
+            return
+        }
+
+        for channelID in MixerChannelID.selectableChannels {
+            try await sendBytes([
+                0xF0, 0x00, 0x00, 0x1A, 0x50, 0x11, 0x01, 0x00, midiChannel, 0x01, channelID.midiChannelCode, 0xF7
+            ])
+        }
+    }
+
     private func sendNRPN(
         midiChannel: UInt8,
         targetChannel: UInt8,
@@ -314,18 +324,43 @@ final class QuNetworkMixerController: MixerController {
         let receivedMIDIChannel = bytes[8] & 0x0F
         let command = bytes[9] & 0x7F
 
-        guard command == 0x11 else {
+        switch command {
+        case 0x02:
+            guard bytes.count >= 12,
+                  let channelID = MixerChannelID(midiChannelCode: bytes[10]) else {
+                return
+            }
+
+            let nameBytes = Array(bytes[11..<(bytes.count - 1)])
+            let decodedName = sanitizedChannelName(from: nameBytes)
+
+            storedChannels = storedChannels.map { channel in
+                guard channel.id == channelID else {
+                    return channel
+                }
+
+                return MixerChannelState(
+                    id: channel.id,
+                    level: channel.level,
+                    customName: decodedName
+                )
+            }
+        case 0x11:
+            connectionTimeoutTask?.cancel()
+            connectionTimeoutTask = nil
+            midiChannel = receivedMIDIChannel
+            storedConnectionState = MixerConnectionState(
+                phase: .connected,
+                message: "Connected to \(endpoint.host):\(endpoint.port) on MIDI channel \(Int(receivedMIDIChannel) + 1)",
+                endpoint: endpoint
+            )
+
+            Task {
+                try? await requestChannelNames()
+            }
+        default:
             return
         }
-
-        connectionTimeoutTask?.cancel()
-        connectionTimeoutTask = nil
-        midiChannel = receivedMIDIChannel
-        storedConnectionState = MixerConnectionState(
-            phase: .connected,
-            message: "Connected to \(endpoint.host):\(endpoint.port) on MIDI channel \(Int(receivedMIDIChannel) + 1)",
-            endpoint: endpoint
-        )
     }
 
     private func startConnectionTimeout(for endpoint: MixerEndpoint) {
@@ -363,17 +398,18 @@ final class QuNetworkMixerController: MixerController {
         case 0x06:
             nrpnState.dataMSB = value
         case 0x26:
-            if nrpnState.channel == 0x67,
+            if let targetChannel = nrpnState.channel,
+               let channelID = MixerChannelID(midiChannelCode: targetChannel),
                nrpnState.parameterID == 0x17,
                value == 0x07,
                let dataMSB = nrpnState.dataMSB
             {
                 let level = FaderLevel(normalized: Double(dataMSB) / 127)
                 storedChannels = storedChannels.map { channel in
-                    guard channel.id == .mainLr else {
+                    guard channel.id == channelID else {
                         return channel
                     }
-                    return MixerChannelState(id: channel.id, level: level)
+                    return MixerChannelState(id: channel.id, level: level, customName: channel.customName)
                 }
             }
             nrpnState.clear()
@@ -394,6 +430,9 @@ final class QuNetworkMixerController: MixerController {
         midiChannel = nil
         byteBuffer.removeAll(keepingCapacity: false)
         nrpnState.clear()
+        storedChannels = storedChannels.map { channel in
+            MixerChannelState(id: channel.id, level: channel.level, customName: channel.customName)
+        }
 
         if updateState {
             storedConnectionState = MixerConnectionState(
@@ -430,6 +469,30 @@ final class QuNetworkMixerController: MixerController {
         }
 
         return "\(prefix): \(rawMessage)"
+    }
+
+    private static func makeInitialChannels() -> [MixerChannelState] {
+        MixerChannelID.selectableChannels.map { channelID in
+            MixerChannelState(
+                id: channelID,
+                level: FaderLevel(normalized: channelID == .mainLr ? 0.72 : 0),
+                customName: nil
+            )
+        }
+    }
+
+    private func sanitizedChannelName(from nameBytes: [UInt8]) -> String? {
+        let filteredBytes = nameBytes.filter { byte in
+            byte != 0x00 && byte >= 0x20 && byte <= 0x7E
+        }
+
+        guard let decodedName = String(bytes: filteredBytes, encoding: .ascii)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !decodedName.isEmpty else {
+            return nil
+        }
+
+        return decodedName
     }
 }
 

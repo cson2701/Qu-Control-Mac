@@ -8,9 +8,23 @@ import Foundation
 
 @MainActor
 final class MockMixerController: MixerController {
-    @Published private var storedChannels: [MixerChannelState] = [
-        MixerChannelState(id: .mainLr, level: FaderLevel(normalized: 0.72))
-    ]
+    @Published private var storedChannels: [MixerChannelState] = MixerChannelID.selectableChannels.enumerated().map { index, channelID in
+        let normalized = min(0.18 + (Double(index) * 0.04), 0.88)
+        let customName: String? = switch channelID {
+        case .ch1: "Kick"
+        case .ch2: "Snare"
+        case .ch3: "Bass"
+        case .ch4: "Guitar"
+        case .mainLr: "Main LR"
+        default: nil
+        }
+
+        return MixerChannelState(
+            id: channelID,
+            level: FaderLevel(normalized: normalized),
+            customName: customName
+        )
+    }
     @Published private var storedConnectionState = MixerConnectionState(
         phase: .disconnected,
         message: "Mock controller disconnected",
