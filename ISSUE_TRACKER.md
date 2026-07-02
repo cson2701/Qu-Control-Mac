@@ -26,12 +26,16 @@ These are the first delivery tasks for this project:
 | Status | Task | Title | Notes |
 |--------|------|-------|-------|
 | Done | [#1](https://github.com/cson2701/Qu-Control-Mac/issues/1) | Create the UI and baseline code | Port the Kotlin app structure to SwiftUI, including the Main LR fader screen, baseline models, state, and mock controller |
-| Todo | [#2](https://github.com/cson2701/Qu-Control-Mac/issues/2) | Communicate with the mixer | Reimplement the Qu TCP/MIDI connection layer in Swift and wire it into the baseline app |
+| Done | [#2](https://github.com/cson2701/Qu-Control-Mac/issues/2) | Communicate with the mixer | Reimplement the Qu TCP/MIDI connection layer in Swift and wire it into the baseline app |
+| Todo | [#4](https://github.com/cson2701/Qu-Control-Mac/issues/4) | Add the ability to shut down the mixer | Add a confirmed shutdown action for a connected live mixer |
+| Todo | [#5](https://github.com/cson2701/Qu-Control-Mac/issues/5) | Explore auto-discovering the mixer on the local network | Assess whether the app can find the mixer IP automatically |
 
 ## Suggested Execution Order
 
 1. `#1` Create the UI and baseline code
 2. `#2` Communicate with the mixer
+3. `#4` Add the ability to shut down the mixer
+4. `#5` Explore auto-discovering the mixer on the local network
 
 ## Notes
 
