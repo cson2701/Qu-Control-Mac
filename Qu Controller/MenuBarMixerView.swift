@@ -77,8 +77,9 @@ private struct HorizontalFaderRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(channel.id.displayName)
+                Text(channel.displayName)
                     .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
 
                 Spacer(minLength: 0)
 
@@ -93,5 +94,74 @@ private struct HorizontalFaderRow: View {
                 .disabled(!isEnabled)
         }
         .padding(.vertical, 2)
+    }
+}
+
+struct ChannelVisibilityPicker: View {
+    @ObservedObject var viewModel: MixerScreenViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                Text("Visible Channels")
+                    .font(.headline)
+
+                Spacer(minLength: 0)
+
+                Button("Done") {
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
+            Text("Choose which channels are visible on the main screen and in the menu bar popup.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack(alignment: .top, spacing: 20) {
+                ScrollView {
+                    ChannelVisibilitySection(
+                        title: "Main Screen",
+                        surface: .mainScreen,
+                        viewModel: viewModel
+                    )
+                }
+                .frame(width: 220, height: 360)
+
+                ScrollView {
+                    ChannelVisibilitySection(
+                        title: "Menu Bar Popup",
+                        surface: .menuBar,
+                        viewModel: viewModel
+                    )
+                }
+                .frame(width: 220, height: 360)
+            }
+        }
+    }
+}
+
+private struct ChannelVisibilitySection: View {
+    let title: String
+    let surface: MixerLayoutSurface
+    @ObservedObject var viewModel: MixerScreenViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+
+            ForEach(viewModel.selectableChannels) { channel in
+                Toggle(
+                    channel.displayName,
+                    isOn: Binding(
+                        get: { viewModel.isChannelVisible(channel.id, on: surface) },
+                        set: { viewModel.setChannelVisibility($0, for: channel.id, on: surface) }
+                    )
+                )
+                .toggleStyle(.checkbox)
+            }
+        }
     }
 }

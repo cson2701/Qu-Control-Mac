@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var viewModel: MixerScreenViewModel
     @State private var isShowingShutdownConfirmation = false
+    @State private var isShowingMainChannelPicker = false
 
     var body: some View {
         HStack(spacing: 32) {
@@ -34,7 +35,7 @@ struct ContentView: View {
                     .help("Shut down the connected mixer")
                 }
 
-                Text("Baseline control surface for Main LR")
+                Text("Choose which mixer channels appear here and in the menu bar popup.")
                     .font(.title3)
                     .foregroundStyle(.secondary)
 
@@ -57,6 +58,11 @@ struct ContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
 
+                Button("Choose Visible Channels") {
+                    isShowingMainChannelPicker = true
+                }
+                .buttonStyle(.bordered)
+
                 Text(viewModel.connectionState.message)
                     .foregroundStyle(.secondary)
 
@@ -66,16 +72,29 @@ struct ContentView: View {
             .padding(24)
             .background(Color(nsColor: .windowBackgroundColor).opacity(0.75))
             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .sheet(isPresented: $isShowingMainChannelPicker) {
+                ChannelVisibilityPicker(viewModel: viewModel)
+                .padding(24)
+            }
 
-            ZStack {
-                if let mainLrChannel = viewModel.mainLrChannel {
-                    VerticalFader(channel: mainLrChannel, isEnabled: viewModel.isFaderInteractive) { level in
-                        viewModel.setLevel(level, for: mainLrChannel.id)
-                    }
-                    .frame(maxHeight: .infinity)
-                } else {
-                    Text("Main LR unavailable")
+            Group {
+                if viewModel.visibleMainScreenChannels.isEmpty {
+                    Text("No channels selected")
                         .foregroundStyle(.secondary)
+                } else {
+                    ScrollView(.horizontal) {
+                        HStack(alignment: .top, spacing: 18) {
+                            ForEach(viewModel.visibleMainScreenChannels) { channel in
+                                VerticalFader(channel: channel, isEnabled: viewModel.isFaderInteractive) { level in
+                                    viewModel.setLevel(level, for: channel.id)
+                                }
+                                .frame(width: 104)
+                                .frame(maxHeight: .infinity)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 4)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)

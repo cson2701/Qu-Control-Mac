@@ -18,8 +18,11 @@ struct VerticalFader: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            Text(channel.id.displayName)
+            Text(channel.displayName)
                 .font(.title3.weight(.semibold))
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .frame(width: 88)
 
             Text(levelLabel)
                 .font(.system(size: 28, weight: .semibold, design: .rounded))
