@@ -127,6 +127,10 @@ final class MixerScreenViewModel: ObservableObject {
         controller is QuNetworkMixerController && connectionState.phase == .disconnected && !isScanningForMixer
     }
 
+    var scanButtonTitle: String {
+        isScanningForMixer ? "Stop Scan" : "Find Mixer"
+    }
+
     func toggleConnection() {
         switch connectionState.phase {
         case .connected, .connecting:
@@ -164,6 +168,16 @@ final class MixerScreenViewModel: ObservableObject {
         }
 
         startDiscovery()
+    }
+
+    func stopScanningForMixer() {
+        guard isScanningForMixer else {
+            return
+        }
+
+        discoveryTask?.cancel()
+        discoveryTask = nil
+        discoveryState = .idle
     }
 
     private func visibleChannels(for surface: MixerLayoutSurface) -> [MixerChannelState] {
@@ -219,9 +233,7 @@ final class MixerScreenViewModel: ObservableObject {
 
             let discovery = QuMixerDiscovery()
             if let discoveredHost = await discovery.discoverMixer() {
-                if self.host == self.defaultHost {
-                    self.host = discoveredHost
-                }
+                self.host = discoveredHost
                 self.discoveryState = .found(discoveredHost)
             } else {
                 self.discoveryState = .unavailable

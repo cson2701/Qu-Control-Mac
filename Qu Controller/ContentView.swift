@@ -158,11 +158,15 @@ struct ContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
 
-                Button("Auto-Scan") {
-                    viewModel.scanForMixer()
+                Button(viewModel.scanButtonTitle) {
+                    if viewModel.isScanningForMixer {
+                        viewModel.stopScanningForMixer()
+                    } else {
+                        viewModel.scanForMixer()
+                    }
                 }
                 .buttonStyle(.bordered)
-                .disabled(!viewModel.isAutoScanAvailable)
+                .disabled(!viewModel.isScanningForMixer && !viewModel.isAutoScanAvailable)
             }
 
             if showsChannelPicker {
