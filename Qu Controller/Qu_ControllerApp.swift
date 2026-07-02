@@ -10,6 +10,7 @@ import SwiftUI
 
 @main
 struct Qu_ControllerApp: App {
+    private let menuBarIconSize = NSSize(width: 18, height: 18)
     @NSApplicationDelegateAdaptor(AppVisibilityController.self) private var appVisibilityController
     @StateObject private var viewModel: MixerScreenViewModel
 
@@ -39,8 +40,15 @@ struct Qu_ControllerApp: App {
                 }
             )
         } label: {
-            Image(nsImage: NSApp.applicationIconImage)
+            Image(nsImage: menuBarImage)
         }
         .menuBarExtraStyle(.window)
+    }
+
+    private var menuBarImage: NSImage {
+        let image = NSImage(named: "MenuBarIcon") ?? NSImage()
+        image.isTemplate = true
+        image.size = menuBarIconSize
+        return image
     }
 }
