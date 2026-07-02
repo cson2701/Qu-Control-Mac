@@ -12,21 +12,31 @@ final class MixerScreenViewModel: ObservableObject {
         static let layoutPreferences = "mixer.layoutPreferences"
     }
 
+    enum DiscoveryState: Equatable {
+        case idle
+        case scanning
+        case found(String)
+        case unavailable
+    }
+
     @Published var host: String
     @Published private(set) var channels: [MixerChannelState]
     @Published private(set) var connectionState: MixerConnectionState
     @Published private(set) var layoutPreferences: MixerLayoutPreferences
+    @Published private(set) var discoveryState: DiscoveryState = .idle
 
     private let controller: MixerController
+    private let defaultHost: String
     private let userDefaults: UserDefaults
     private var cancellables = Set<AnyCancellable>()
 
     init(
         controller: MixerController,
-        defaultEndpoint: MixerEndpoint = MixerEndpoint(host: "192.168.4.198"),
+        defaultEndpoint: MixerEndpoint = MixerEndpoint(host: "192.168.4.120"),
         userDefaults: UserDefaults = .standard
     ) {
         self.controller = controller
+        self.defaultHost = defaultEndpoint.host
         self.userDefaults = userDefaults
         host = defaultEndpoint.host
         channels = controller.channels
@@ -40,6 +50,8 @@ final class MixerScreenViewModel: ObservableObject {
         controller.connectionStatePublisher
             .receive(on: DispatchQueue.main)
             .assign(to: &$connectionState)
+
+        startAutoDiscoveryIfNeeded()
     }
 
     var visibleMainScreenChannels: [MixerChannelState] {
@@ -83,6 +95,23 @@ final class MixerScreenViewModel: ObservableObject {
 
     var isShutdownAvailable: Bool {
         connectionState.phase == .connected
+    }
+
+    var statusMessage: String {
+        switch discoveryState {
+        case .scanning where connectionState.phase == .disconnected:
+            "Scanning local network for a Qu mixer..."
+        case .found(let discoveredHost) where connectionState.phase == .disconnected:
+            "Discovered mixer at \(discoveredHost)"
+        case .unavailable where connectionState.phase == .disconnected:
+            "No mixer discovered automatically. Enter an IP or connect manually."
+        default:
+            connectionState.message
+        }
+    }
+
+    var isScanningForMixer: Bool {
+        discoveryState == .scanning && connectionState.phase == .disconnected
     }
 
     func toggleConnection() {
@@ -139,5 +168,29 @@ final class MixerScreenViewModel: ObservableObject {
         }
 
         return preferences
+    }
+
+    private func startAutoDiscoveryIfNeeded() {
+        guard controller is QuNetworkMixerController else {
+            return
+        }
+
+        discoveryState = .scanning
+
+        Task { @MainActor [weak self] in
+            guard let self else {
+                return
+            }
+
+            let discovery = QuMixerDiscovery()
+            if let discoveredHost = await discovery.discoverMixer() {
+                if self.host == self.defaultHost {
+                    self.host = discoveredHost
+                }
+                self.discoveryState = .found(discoveredHost)
+            } else {
+                self.discoveryState = .unavailable
+            }
+        }
     }
 }

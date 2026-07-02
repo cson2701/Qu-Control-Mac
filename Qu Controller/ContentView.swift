@@ -63,8 +63,11 @@ struct ContentView: View {
                 }
                 .buttonStyle(.bordered)
 
-                Text(viewModel.connectionState.message)
-                    .foregroundStyle(.secondary)
+                DiscoveryStatusView(
+                    message: viewModel.statusMessage,
+                    isScanning: viewModel.isScanningForMixer,
+                    font: nil
+                )
 
                 Spacer(minLength: 0)
             }
@@ -129,6 +132,26 @@ struct ContentView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView(viewModel: MixerScreenViewModel(controller: MockMixerController()))
+    }
+}
+
+struct DiscoveryStatusView: View {
+    let message: String
+    let isScanning: Bool
+    let font: Font?
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            if isScanning {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel("Scanning for mixer")
+            }
+
+            Text(message)
+                .font(font)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 
