@@ -46,11 +46,13 @@ struct MenuBarMixerView: View {
                 }
                 .buttonStyle(.borderedProminent)
 
-                Text(viewModel.connectionState.message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                DiscoveryStatusView(
+                    message: viewModel.statusMessage,
+                    isScanning: viewModel.isScanningForMixer,
+                    font: .caption
+                )
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(16)
