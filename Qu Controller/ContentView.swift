@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var viewModel: MixerScreenViewModel
+    let isUsingMockConnection: Bool
+    let onSetUseMockConnection: (Bool) -> Void
     @State private var isShowingShutdownConfirmation = false
     @State private var isShowingMainChannelPicker = false
 
@@ -182,6 +184,17 @@ struct ContentView: View {
                 font: nil
             )
 
+#if DEBUG
+            Toggle(
+                "Use Mock Connection",
+                isOn: Binding(
+                    get: { isUsingMockConnection },
+                    set: onSetUseMockConnection
+                )
+            )
+            .toggleStyle(.switch)
+#endif
+
             Spacer(minLength: 0)
         }
         .frame(minWidth: 280, maxWidth: 360, maxHeight: .infinity, alignment: .topLeading)
@@ -243,7 +256,11 @@ struct ContentView: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView(viewModel: MixerScreenViewModel(controller: MockMixerController()))
+        ContentView(
+            viewModel: MixerScreenViewModel(controller: MockMixerController()),
+            isUsingMockConnection: true,
+            onSetUseMockConnection: { _ in }
+        )
     }
 }
 
