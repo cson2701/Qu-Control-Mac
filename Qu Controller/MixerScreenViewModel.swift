@@ -113,7 +113,7 @@ final class MixerScreenViewModel: ObservableObject {
         case .found(let discoveredHost) where connectionState.phase == .disconnected:
             "Discovered mixer at \(discoveredHost)"
         case .unavailable where connectionState.phase == .disconnected:
-            "No mixer discovered automatically. Enter an IP or connect manually."
+            "No mixer discovered automatically. Enter an IP and connect manually."
         default:
             connectionState.message
         }
