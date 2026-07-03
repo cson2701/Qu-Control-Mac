@@ -50,6 +50,11 @@ struct Qu_ControllerApp: App {
             Image(nsImage: menuBarImage)
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsView(viewModel: viewModel)
+        }
+        .windowResizability(.contentSize)
     }
 
     private var menuBarImage: NSImage {

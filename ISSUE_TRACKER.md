@@ -33,7 +33,7 @@ These are the first delivery tasks for this project:
 | Done | [#10](https://github.com/cson2701/Qu-Control-Mac/issues/10) | Set custom app and menu bar icons | Add proper icon assets for the app bundle and menu bar extra |
 | Done | [#5](https://github.com/cson2701/Qu-Control-Mac/issues/5) | Explore auto-discovering the mixer on the local network | Assess whether the app can find the mixer IP automatically |
 | Done | [#14](https://github.com/cson2701/Qu-Control-Mac/issues/14) | Refine connection-first UI flow | Show a dedicated connection screen until the mixer connects |
-| Todo | [#17](https://github.com/cson2701/Qu-Control-Mac/issues/17) | Add settings items | Add local task tracking for the settings items issue |
+| In-progress | [#17](https://github.com/cson2701/Qu-Control-Mac/issues/17) | Add settings items | Add local task tracking for the settings items issue |
 | Done | [#18](https://github.com/cson2701/Qu-Control-Mac/issues/18) | Add a debug-only mock connection toggle | Add a debug-only mock toggle and stop discovery immediately when mock mode is enabled |
 
 ## Suggested Execution Order

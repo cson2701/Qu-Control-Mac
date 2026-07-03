@@ -4,8 +4,8 @@ struct ContentView: View {
     @ObservedObject var viewModel: MixerScreenViewModel
     let isUsingMockConnection: Bool
     let onSetUseMockConnection: (Bool) -> Void
+    @Environment(\.openSettings) private var openSettings
     @State private var isShowingShutdownConfirmation = false
-    @State private var isShowingMainChannelPicker = false
 
     var body: some View {
         Group {
@@ -39,10 +39,6 @@ struct ContentView: View {
         } message: {
             Text("This will power off the connected Qu mixer. You will need a hard power reset to turn it back on.")
         }
-        .sheet(isPresented: $isShowingMainChannelPicker) {
-            ChannelVisibilityPicker(viewModel: viewModel)
-                .padding(24)
-        }
     }
 
     private var connectedContent: some View {
@@ -59,8 +55,8 @@ struct ContentView: View {
                         Text("No channels selected")
                             .font(.title3.weight(.semibold))
 
-                        Button("Choose Visible Channels") {
-                            isShowingMainChannelPicker = true
+                        Button("Open Settings") {
+                            openSettings()
                         }
                         .buttonStyle(.borderedProminent)
                     }
@@ -113,16 +109,13 @@ struct ContentView: View {
 
     private var disconnectedContent: some View {
         VStack {
-            controlSidebar(
-                subtitle: "Connect to a Qu mixer to open the live control surface.",
-                showsChannelPicker: false
-            )
+            controlSidebar(subtitle: "Connect to a Qu mixer to open the live control surface.")
             .frame(maxWidth: 440)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
-    private func controlSidebar(subtitle: String, showsChannelPicker: Bool) -> some View {
+    private func controlSidebar(subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .center, spacing: 12) {
                 Text("Qu Controller")
@@ -169,11 +162,9 @@ struct ContentView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(!viewModel.isScanningForMixer && !viewModel.isAutoScanAvailable)
-            }
 
-            if showsChannelPicker {
-                Button("Choose Visible Channels") {
-                    isShowingMainChannelPicker = true
+                Button("Settings") {
+                    openSettings()
                 }
                 .buttonStyle(.bordered)
             }
@@ -223,7 +214,7 @@ struct ContentView: View {
 
             HStack(spacing: 10) {
                 Button {
-                    isShowingMainChannelPicker = true
+                    openSettings()
                 } label: {
                     Image(systemName: "gearshape")
                         .font(.headline)
@@ -231,7 +222,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(CircularIconButtonStyle(fillColor: Color.secondary.opacity(0.12)))
                 .foregroundStyle(Color.primary)
-                .help("Choose visible channels")
+                .help("Open settings")
 
                 Button("Disconnect") {
                     viewModel.toggleConnection()
@@ -239,7 +230,11 @@ struct ContentView: View {
                 .buttonStyle(.bordered)
 
                 Button(role: .destructive) {
-                    isShowingShutdownConfirmation = true
+                    if viewModel.confirmBeforeShutdown {
+                        isShowingShutdownConfirmation = true
+                    } else {
+                        viewModel.shutdownMixer()
+                    }
                 } label: {
                     Image(systemName: "power")
                         .font(.headline)
