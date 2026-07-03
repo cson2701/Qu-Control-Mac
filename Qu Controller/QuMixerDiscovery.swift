@@ -29,9 +29,13 @@ struct QuMixerDiscovery {
         self.maximumHostsToScan = maximumHostsToScan
     }
 
-    func discoverMixer() async -> String? {
+    func discoverMixer(preferredHost: String? = nil) async -> String? {
         guard let subnet = LocalSubnet.active,
-              let hosts = prioritizedHosts(from: subnet, maximumCount: maximumHostsToScan),
+              let hosts = prioritizedHosts(
+                from: subnet,
+                preferredHost: preferredHost,
+                maximumCount: maximumHostsToScan
+              ),
               !hosts.isEmpty else {
             return nil
         }
@@ -53,10 +57,22 @@ struct QuMixerDiscovery {
         return await scanState.foundHost
     }
 
-    private func prioritizedHosts(from subnet: LocalSubnet, maximumCount: Int) -> [String]? {
+    func isMixerReachable(at host: String) async -> Bool {
+        await probe(host: host)
+    }
+
+    private func prioritizedHosts(
+        from subnet: LocalSubnet,
+        preferredHost: String?,
+        maximumCount: Int
+    ) -> [String]? {
         let scanSubnets = candidateSubnets(for: subnet)
         var hosts: [String] = []
         hosts.reserveCapacity(maximumCount)
+
+        if let preferredHost, !preferredHost.isEmpty {
+            hosts.append(preferredHost)
+        }
 
         for scanSubnet in scanSubnets {
             let remainingCapacity = maximumCount - hosts.count
@@ -68,7 +84,9 @@ struct QuMixerDiscovery {
                 maximumCount: remainingCapacity,
                 preferredHostAddress: subnet.address
             )
-            hosts.append(contentsOf: subnetHosts)
+            for host in subnetHosts where !hosts.contains(host) {
+                hosts.append(host)
+            }
         }
 
         return hosts.isEmpty ? nil : hosts
