@@ -25,6 +25,7 @@ final class MixerScreenViewModel: ObservableObject {
     @Published private(set) var startAtLogin: Bool
     @Published private(set) var startHiddenInMenuBar: Bool
     @Published private(set) var showMenuBarIcon: Bool
+    @Published private(set) var showSignalIndicators: Bool
 
     private let controller: MixerController
     private let defaultHost: String
@@ -50,6 +51,7 @@ final class MixerScreenViewModel: ObservableObject {
         startAtLogin = LoginItemSettings.isStartAtLoginEnabled
         showMenuBarIcon = AppSettings.loadShowMenuBarIcon(from: userDefaults)
         startHiddenInMenuBar = Self.loadStartHiddenInMenuBar(from: userDefaults)
+        showSignalIndicators = Self.loadShowSignalIndicators(from: userDefaults)
 
         controller.channelsPublisher
             .receive(on: DispatchQueue.main)
@@ -65,6 +67,15 @@ final class MixerScreenViewModel: ObservableObject {
                 self?.handleConnectionStateChange(state)
             }
             .store(in: &cancellables)
+
+        controller.connectionStatePublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in
+                self?.updateSignalMonitoringState(for: state)
+            }
+            .store(in: &cancellables)
+
+        updateSignalMonitoringState(for: connectionState)
 
         startInitialConnectionFlowIfNeeded()
     }
@@ -87,6 +98,7 @@ final class MixerScreenViewModel: ObservableObject {
                 MixerChannelState(
                     id: channel.id,
                     level: FaderLevel(normalized: 0),
+                    hasSignal: false,
                     customName: channel.customName
                 )
             }
@@ -202,6 +214,12 @@ final class MixerScreenViewModel: ObservableObject {
         userDefaults.set(isEnabled, forKey: AppSettingsKey.showMenuBarIcon)
     }
 
+    func setShowSignalIndicators(_ isEnabled: Bool) {
+        showSignalIndicators = isEnabled
+        userDefaults.set(isEnabled, forKey: AppSettingsKey.showSignalIndicators)
+        updateSignalMonitoringState(for: connectionState)
+    }
+
     func scanForMixer() {
         guard controller is QuNetworkMixerController, !isScanningForMixer else {
             return
@@ -276,6 +294,18 @@ final class MixerScreenViewModel: ObservableObject {
         }
 
         return userDefaults.bool(forKey: AppSettingsKey.startHiddenInMenuBar)
+    }
+
+    private static func loadShowSignalIndicators(from userDefaults: UserDefaults) -> Bool {
+        guard userDefaults.object(forKey: AppSettingsKey.showSignalIndicators) != nil else {
+            return true
+        }
+
+        return userDefaults.bool(forKey: AppSettingsKey.showSignalIndicators)
+    }
+
+    private func updateSignalMonitoringState(for state: MixerConnectionState) {
+        controller.setSignalMonitoringEnabled(showSignalIndicators && state.phase == .connected)
     }
 
     private func startInitialConnectionFlowIfNeeded() {

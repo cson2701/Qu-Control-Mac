@@ -52,7 +52,8 @@ struct MenuBarMixerView: View {
                         ForEach(viewModel.menuBarChannels) { channel in
                             HorizontalFaderRow(
                                 channel: channel,
-                                isEnabled: viewModel.isFaderInteractive
+                                isEnabled: viewModel.isFaderInteractive,
+                                showsSignalIndicator: viewModel.showSignalIndicators
                             ) { level in
                                 viewModel.setLevel(level, for: channel.id)
                             }
@@ -81,6 +82,7 @@ struct MenuBarMixerView: View {
 private struct HorizontalFaderRow: View {
     let channel: MixerChannelState
     let isEnabled: Bool
+    let showsSignalIndicator: Bool
     let onLevelChange: (FaderLevel) -> Void
 
     private var levelLabel: String {
@@ -97,9 +99,17 @@ private struct HorizontalFaderRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(channel.displayName)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    if showsSignalIndicator {
+                        Circle()
+                            .fill(isEnabled && channel.hasSignal ? Color.green : Color.gray.opacity(0.6))
+                            .frame(width: 7, height: 7)
+                    }
+
+                    Text(channel.displayName)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                }
 
                 Spacer(minLength: 0)
 

@@ -75,7 +75,11 @@ struct ContentView: View {
                         ScrollView(.horizontal) {
                             HStack(alignment: .top, spacing: Self.mainScreenFaderSpacing) {
                                 ForEach(channels) { channel in
-                                    VerticalFader(channel: channel, isEnabled: viewModel.isFaderInteractive) { level in
+                                    VerticalFader(
+                                        channel: channel,
+                                        isEnabled: viewModel.isFaderInteractive,
+                                        showsSignalIndicator: viewModel.showSignalIndicators
+                                    ) { level in
                                         viewModel.setLevel(level, for: channel.id)
                                     }
                                     .frame(width: faderWidth)

@@ -9,6 +9,7 @@ import SwiftUI
 struct VerticalFader: View {
     let channel: MixerChannelState
     let isEnabled: Bool
+    let showsSignalIndicator: Bool
     let onLevelChange: (FaderLevel) -> Void
 
     private let minimumSliderHeight: CGFloat = 160
@@ -18,11 +19,17 @@ struct VerticalFader: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Text(channel.displayName)
-                .font(.headline.weight(.semibold))
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .frame(width: 80)
+            HStack(spacing: 6) {
+                if showsSignalIndicator {
+                    SignalDot(isActive: isEnabled && channel.hasSignal)
+                }
+
+                Text(channel.displayName)
+                    .font(.headline.weight(.semibold))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(width: 80)
 
             Text(levelLabel)
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
@@ -52,6 +59,17 @@ struct VerticalFader: View {
                 .strokeBorder(Color.primary.opacity(0.05), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+private struct SignalDot: View {
+    let isActive: Bool
+
+    var body: some View {
+        Circle()
+            .fill(isActive ? Color.green : Color.gray.opacity(0.6))
+            .frame(width: 8, height: 8)
+            .animation(.easeInOut(duration: 0.2), value: isActive)
     }
 }
 
