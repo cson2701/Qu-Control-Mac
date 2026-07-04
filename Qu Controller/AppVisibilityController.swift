@@ -47,10 +47,24 @@ final class AppVisibilityController: NSObject, NSApplicationDelegate {
         }
     }
 
-    func showMainWindow(openWindow: OpenWindowAction) {
+    func showMainWindow() {
         NSApp.setActivationPolicy(.regular)
-        openWindow(id: AppWindowID.main)
+        if let mainWindow {
+            mainWindow.makeKeyAndOrderFront(nil)
+            mainWindow.orderFrontRegardless()
+        }
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func showSettingsWindow() {
+        let settingsSelector = Selector(("showSettingsWindow:"))
+        let preferencesSelector = Selector(("showPreferencesWindow:"))
+
+        if NSApp.sendAction(settingsSelector, to: nil, from: nil) {
+            return
+        }
+
+        _ = NSApp.sendAction(preferencesSelector, to: nil, from: nil)
     }
 
     @objc private func handleMainWindowWillClose(_ notification: Notification) {
