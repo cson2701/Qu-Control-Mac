@@ -35,7 +35,7 @@ These are the first delivery tasks for this project:
 | Done | [#14](https://github.com/cson2701/Qu-Control-Mac/issues/14) | Refine connection-first UI flow | Show a dedicated connection screen until the mixer connects |
 | Done | [#17](https://github.com/cson2701/Qu-Control-Mac/issues/17) | Add settings items | Add local task tracking for the settings items issue |
 | Done | [#18](https://github.com/cson2701/Qu-Control-Mac/issues/18) | Add a debug-only mock connection toggle | Add a debug-only mock toggle and stop discovery immediately when mock mode is enabled |
-| Todo | [#20](https://github.com/cson2701/Qu-Control-Mac/issues/20) | Add more connection and app behavior settings | Follow-on settings ideas beyond the initial settings window |
+| Done | [#20](https://github.com/cson2701/Qu-Control-Mac/issues/20) | Add more connection and app behavior settings | Follow-on settings ideas beyond the initial settings window |
 | Todo | [#22](https://github.com/cson2701/Qu-Control-Mac/issues/22) | Add per-channel mute controls | Add mute state and toggle controls for visible mixer channels |
 | Todo | [#23](https://github.com/cson2701/Qu-Control-Mac/issues/23) | Add live channel metering | Decode and display live meter data for visible mixer channels |
 
