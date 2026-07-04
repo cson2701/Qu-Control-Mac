@@ -25,10 +25,7 @@ final class AppVisibilityController: NSObject, NSApplicationDelegate {
             return
         }
 
-        if let observedWindow {
-            NotificationCenter.default.removeObserver(self, name: NSWindow.willCloseNotification, object: observedWindow)
-            NotificationCenter.default.removeObserver(self, name: NSWindow.didBecomeKeyNotification, object: observedWindow)
-        }
+        detachObservedWindow()
 
         observedWindow = window
         mainWindow = window
@@ -59,11 +56,21 @@ final class AppVisibilityController: NSObject, NSApplicationDelegate {
     @objc private func handleMainWindowWillClose(_ notification: Notification) {
         mainWindow = nil
         observedWindow = nil
-        NSApp.setActivationPolicy(.accessory)
+        NSApp.setActivationPolicy(AppSettings.loadShowMenuBarIcon() ? .accessory : .regular)
     }
 
     @objc private func handleMainWindowDidBecomeKey(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
+    }
+
+    private func detachObservedWindow() {
+        if let observedWindow {
+            NotificationCenter.default.removeObserver(self, name: NSWindow.willCloseNotification, object: observedWindow)
+            NotificationCenter.default.removeObserver(self, name: NSWindow.didBecomeKeyNotification, object: observedWindow)
+        }
+
+        mainWindow = nil
+        observedWindow = nil
     }
 }
 

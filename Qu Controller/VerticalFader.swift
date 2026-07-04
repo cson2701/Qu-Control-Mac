@@ -11,7 +11,7 @@ struct VerticalFader: View {
     let isEnabled: Bool
     let onLevelChange: (FaderLevel) -> Void
 
-    private let minimumSliderHeight: CGFloat = 280
+    private let minimumSliderHeight: CGFloat = 160
     private var levelLabel: String {
         isEnabled ? "\(channel.level.percentage)%" : "--"
     }
@@ -41,6 +41,7 @@ struct VerticalFader: View {
             .saturation(isEnabled ? 1 : 0)
             .opacity(isEnabled ? 1 : 0.45)
             .frame(minWidth: 56, maxWidth: 56, minHeight: minimumSliderHeight, maxHeight: .infinity)
+            .layoutPriority(1)
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, 10)

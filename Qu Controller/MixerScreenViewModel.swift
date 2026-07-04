@@ -8,13 +8,6 @@ import Foundation
 
 @MainActor
 final class MixerScreenViewModel: ObservableObject {
-    private enum StorageKey {
-        static let layoutPreferences = "mixer.layoutPreferences"
-        static let lastSuccessfulHost = "mixer.lastSuccessfulHost"
-        static let confirmBeforeShutdown = "settings.confirmBeforeShutdown"
-        static let autoConnectAfterDiscovery = "settings.autoConnectAfterDiscovery"
-    }
-
     enum DiscoveryState: Equatable {
         case idle
         case scanning
@@ -29,6 +22,9 @@ final class MixerScreenViewModel: ObservableObject {
     @Published private(set) var discoveryState: DiscoveryState = .idle
     @Published private(set) var confirmBeforeShutdown: Bool
     @Published private(set) var autoConnectAfterDiscovery: Bool
+    @Published private(set) var startAtLogin: Bool
+    @Published private(set) var startHiddenInMenuBar: Bool
+    @Published private(set) var showMenuBarIcon: Bool
 
     private let controller: MixerController
     private let defaultHost: String
@@ -51,6 +47,9 @@ final class MixerScreenViewModel: ObservableObject {
         layoutPreferences = Self.loadLayoutPreferences(from: userDefaults)
         confirmBeforeShutdown = Self.loadConfirmBeforeShutdown(from: userDefaults)
         autoConnectAfterDiscovery = Self.loadAutoConnectAfterDiscovery(from: userDefaults)
+        startAtLogin = LoginItemSettings.isStartAtLoginEnabled
+        showMenuBarIcon = AppSettings.loadShowMenuBarIcon(from: userDefaults)
+        startHiddenInMenuBar = Self.loadStartHiddenInMenuBar(from: userDefaults)
 
         controller.channelsPublisher
             .receive(on: DispatchQueue.main)
@@ -171,12 +170,36 @@ final class MixerScreenViewModel: ObservableObject {
 
     func setConfirmBeforeShutdown(_ isEnabled: Bool) {
         confirmBeforeShutdown = isEnabled
-        userDefaults.set(isEnabled, forKey: StorageKey.confirmBeforeShutdown)
+        userDefaults.set(isEnabled, forKey: AppSettingsKey.confirmBeforeShutdown)
     }
 
     func setAutoConnectAfterDiscovery(_ isEnabled: Bool) {
         autoConnectAfterDiscovery = isEnabled
-        userDefaults.set(isEnabled, forKey: StorageKey.autoConnectAfterDiscovery)
+        userDefaults.set(isEnabled, forKey: AppSettingsKey.autoConnectAfterDiscovery)
+    }
+
+    func setStartAtLogin(_ isEnabled: Bool) {
+        do {
+            try LoginItemSettings.setStartAtLoginEnabled(isEnabled)
+        } catch {
+            NSLog("Failed to update login item setting: \(error.localizedDescription)")
+        }
+
+        startAtLogin = LoginItemSettings.isStartAtLoginEnabled
+    }
+
+    func setStartHiddenInMenuBar(_ isEnabled: Bool) {
+        guard showMenuBarIcon || !isEnabled else {
+            return
+        }
+
+        startHiddenInMenuBar = isEnabled
+        userDefaults.set(isEnabled, forKey: AppSettingsKey.startHiddenInMenuBar)
+    }
+
+    func setShowMenuBarIcon(_ isEnabled: Bool) {
+        showMenuBarIcon = isEnabled
+        userDefaults.set(isEnabled, forKey: AppSettingsKey.showMenuBarIcon)
     }
 
     func scanForMixer() {
@@ -210,11 +233,11 @@ final class MixerScreenViewModel: ObservableObject {
             return
         }
 
-        userDefaults.set(data, forKey: StorageKey.layoutPreferences)
+        userDefaults.set(data, forKey: AppSettingsKey.layoutPreferences)
     }
 
     private static func loadLayoutPreferences(from userDefaults: UserDefaults) -> MixerLayoutPreferences {
-        guard let data = userDefaults.data(forKey: StorageKey.layoutPreferences),
+        guard let data = userDefaults.data(forKey: AppSettingsKey.layoutPreferences),
               let preferences = try? JSONDecoder().decode(MixerLayoutPreferences.self, from: data) else {
             return .default
         }
@@ -223,7 +246,7 @@ final class MixerScreenViewModel: ObservableObject {
     }
 
     private static func loadLastSuccessfulHost(from userDefaults: UserDefaults) -> String? {
-        guard let host = userDefaults.string(forKey: StorageKey.lastSuccessfulHost),
+        guard let host = userDefaults.string(forKey: AppSettingsKey.lastSuccessfulHost),
               !host.isEmpty else {
             return nil
         }
@@ -232,19 +255,27 @@ final class MixerScreenViewModel: ObservableObject {
     }
 
     private static func loadConfirmBeforeShutdown(from userDefaults: UserDefaults) -> Bool {
-        guard userDefaults.object(forKey: StorageKey.confirmBeforeShutdown) != nil else {
+        guard userDefaults.object(forKey: AppSettingsKey.confirmBeforeShutdown) != nil else {
             return true
         }
 
-        return userDefaults.bool(forKey: StorageKey.confirmBeforeShutdown)
+        return userDefaults.bool(forKey: AppSettingsKey.confirmBeforeShutdown)
     }
 
     private static func loadAutoConnectAfterDiscovery(from userDefaults: UserDefaults) -> Bool {
-        guard userDefaults.object(forKey: StorageKey.autoConnectAfterDiscovery) != nil else {
+        guard userDefaults.object(forKey: AppSettingsKey.autoConnectAfterDiscovery) != nil else {
             return false
         }
 
-        return userDefaults.bool(forKey: StorageKey.autoConnectAfterDiscovery)
+        return userDefaults.bool(forKey: AppSettingsKey.autoConnectAfterDiscovery)
+    }
+
+    private static func loadStartHiddenInMenuBar(from userDefaults: UserDefaults) -> Bool {
+        guard userDefaults.object(forKey: AppSettingsKey.startHiddenInMenuBar) != nil else {
+            return false
+        }
+
+        return userDefaults.bool(forKey: AppSettingsKey.startHiddenInMenuBar)
     }
 
     private func startInitialConnectionFlowIfNeeded() {
@@ -333,6 +364,6 @@ final class MixerScreenViewModel: ObservableObject {
             host = successfulHost
         }
 
-        userDefaults.set(successfulHost, forKey: StorageKey.lastSuccessfulHost)
+        userDefaults.set(successfulHost, forKey: AppSettingsKey.lastSuccessfulHost)
     }
 }

@@ -17,16 +17,7 @@ struct ContentView: View {
         }
         .padding(24)
         .frame(minWidth: 900, minHeight: 520)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color(nsColor: .underPageBackgroundColor),
-                    Color(nsColor: .windowBackgroundColor)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .background(Color(nsColor: .windowBackgroundColor))
         .confirmationDialog(
             "Shut Down Mixer",
             isPresented: $isShowingShutdownConfirmation,
@@ -42,68 +33,74 @@ struct ContentView: View {
     }
 
     private var connectedContent: some View {
-        ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: 24) {
-                connectedHeader
+        VStack(alignment: .leading, spacing: 24) {
+            connectedHeader
 
-                if viewModel.visibleMainScreenChannels.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "slider.horizontal.3")
-                            .font(.system(size: 28, weight: .medium))
-                            .foregroundStyle(.secondary)
+            if viewModel.visibleMainScreenChannels.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 28, weight: .medium))
+                        .foregroundStyle(.secondary)
 
-                        Text("No channels selected")
-                            .font(.title3.weight(.semibold))
+                    Text("No channels selected")
+                        .font(.title3.weight(.semibold))
 
-                        Button("Open Settings") {
-                            openSettings()
-                        }
-                        .buttonStyle(.borderedProminent)
+                    Button("Open Settings") {
+                        openSettings()
                     }
-                    .frame(maxWidth: .infinity, minHeight: 360)
-                    .foregroundStyle(.secondary)
-                } else {
-                    VStack(alignment: .leading, spacing: 14) {
-                        HStack {
-                            Text("Control Surface")
-                                .font(.headline)
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack {
+                        Text("Control Surface")
+                            .font(.headline)
 
-                            Spacer(minLength: 0)
+                        Spacer(minLength: 0)
 
-                            Text("\(viewModel.visibleMainScreenChannels.count) channels")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        Text("\(viewModel.visibleMainScreenChannels.count) channels")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    GeometryReader { geometry in
+                        let channels = viewModel.visibleMainScreenChannels
+                        let faderWidth = mainScreenFaderWidth(
+                            channelCount: channels.count,
+                            availableWidth: geometry.size.width
+                        )
 
                         ScrollView(.horizontal) {
-                            HStack(alignment: .top, spacing: 14) {
-                                ForEach(viewModel.visibleMainScreenChannels) { channel in
+                            HStack(alignment: .top, spacing: Self.mainScreenFaderSpacing) {
+                                ForEach(channels) { channel in
                                     VerticalFader(channel: channel, isEnabled: viewModel.isFaderInteractive) { level in
                                         viewModel.setLevel(level, for: channel.id)
                                     }
-                                    .frame(width: 96)
+                                    .frame(width: faderWidth)
                                     .frame(maxHeight: .infinity)
                                 }
                             }
-                            .padding(.horizontal, 4)
+                            .padding(.horizontal, Self.mainScreenFaderPadding)
                             .padding(.vertical, 4)
+                            .frame(minWidth: geometry.size.width, maxHeight: .infinity, alignment: .topLeading)
                         }
                         .scrollIndicators(.visible)
                     }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 16)
-                    .background(Color(nsColor: .windowBackgroundColor).opacity(0.42))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .frame(maxHeight: .infinity)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 16)
+                .background(Color(nsColor: .windowBackgroundColor).opacity(0.42))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            .frame(maxWidth: .infinity, alignment: .top)
         }
-        .scrollIndicators(.never)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
@@ -247,6 +244,21 @@ struct ContentView: View {
         }
         .padding(.horizontal, 4)
     }
+
+    private static let mainScreenFaderSpacing: CGFloat = 14
+    private static let mainScreenFaderPadding: CGFloat = 4
+
+    private func mainScreenFaderWidth(channelCount: Int, availableWidth: CGFloat) -> CGFloat {
+        guard channelCount > 0 else {
+            return 96
+        }
+
+        let spacing = Self.mainScreenFaderSpacing * CGFloat(max(channelCount - 1, 0))
+        let padding = Self.mainScreenFaderPadding * 2
+        let fittedWidth = (availableWidth - spacing - padding) / CGFloat(channelCount)
+
+        return min(max(fittedWidth, 96), 140)
+    }
 }
 
 struct ContentView_Previews: PreviewProvider {
@@ -281,17 +293,36 @@ struct DiscoveryStatusView: View {
 
 struct ConnectionStatusPill: View {
     let connectionState: MixerConnectionState
+    @Environment(\.colorScheme) private var colorScheme
 
-    private var style: (label: String, dotColor: Color, backgroundColor: Color) {
+    private var style: (label: String, dotColor: Color, backgroundColor: Color, textColor: Color) {
+        let isDarkMode = colorScheme == .dark
+
         switch connectionState.phase {
         case .connected:
-            ("Connected", Color(red: 0.11, green: 0.54, blue: 0.24), Color(red: 0.9, green: 0.96, blue: 0.91))
+            if isDarkMode {
+                return ("Connected", Color(red: 0.35, green: 0.9, blue: 0.48), Color(red: 0.06, green: 0.22, blue: 0.11), Color(red: 0.78, green: 1, blue: 0.82))
+            } else {
+                return ("Connected", Color(red: 0.07, green: 0.48, blue: 0.19), Color(red: 0.78, green: 0.91, blue: 0.8), Color(red: 0.03, green: 0.24, blue: 0.1))
+            }
         case .connecting:
-            ("Connecting", Color(red: 0.76, green: 0.48, blue: 0), Color(red: 1, green: 0.95, blue: 0.84))
+            if isDarkMode {
+                return ("Connecting", Color(red: 1, green: 0.72, blue: 0.24), Color(red: 0.28, green: 0.17, blue: 0.03), Color(red: 1, green: 0.86, blue: 0.52))
+            } else {
+                return ("Connecting", Color(red: 0.78, green: 0.43, blue: 0), Color(red: 0.98, green: 0.84, blue: 0.55), Color(red: 0.36, green: 0.2, blue: 0))
+            }
         case .error:
-            ("Error", Color(red: 0.78, green: 0.16, blue: 0.16), Color(red: 0.99, green: 0.88, blue: 0.88))
+            if isDarkMode {
+                return ("Error", Color(red: 1, green: 0.36, blue: 0.36), Color(red: 0.32, green: 0.06, blue: 0.06), Color(red: 1, green: 0.74, blue: 0.74))
+            } else {
+                return ("Error", Color(red: 0.78, green: 0.16, blue: 0.16), Color(red: 0.99, green: 0.88, blue: 0.88), Color(red: 0.46, green: 0.07, blue: 0.07))
+            }
         case .disconnected:
-            ("Disconnected", Color(red: 0.4, green: 0.44, blue: 0.5), Color(red: 0.92, green: 0.94, blue: 0.96))
+            if isDarkMode {
+                return ("Disconnected", Color(red: 0.7, green: 0.75, blue: 0.82), Color(red: 0.15, green: 0.17, blue: 0.2), Color(red: 0.86, green: 0.89, blue: 0.94))
+            } else {
+                return ("Disconnected", Color(red: 0.32, green: 0.45, blue: 0.63), Color(red: 0.82, green: 0.88, blue: 0.96), Color(red: 0.12, green: 0.2, blue: 0.32))
+            }
         }
     }
 
@@ -303,11 +334,15 @@ struct ConnectionStatusPill: View {
 
             Text(style.label)
                 .font(.headline)
+                .foregroundStyle(style.textColor)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(style.backgroundColor)
         .clipShape(Capsule())
+        .fixedSize(horizontal: true, vertical: false)
     }
 }
 

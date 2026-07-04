@@ -3,18 +3,22 @@ import SwiftUI
 struct SettingsView: View {
     private enum Tab: Hashable {
         case connection
+        case appBehavior
         case safety
         case mainWindow
         case menuBar
     }
 
     @ObservedObject var viewModel: MixerScreenViewModel
+    let onSetShowMenuBarIcon: (Bool) -> Void
     @State private var selectedTab: Tab = .connection
 
     private var windowSize: CGSize {
         switch selectedTab {
         case .connection:
             CGSize(width: 540, height: 250)
+        case .appBehavior:
+            CGSize(width: 540, height: 330)
         case .safety:
             CGSize(width: 520, height: 220)
         case .mainWindow, .menuBar:
@@ -43,6 +47,45 @@ struct SettingsView: View {
             .tag(Tab.connection)
             .tabItem {
                 Label("Connection", systemImage: "network")
+            }
+
+            SettingsPane(title: "App Behavior", subtitle: "Launch and window behavior.") {
+                Form {
+                    Toggle(
+                        "Start on login",
+                        isOn: Binding(
+                            get: { viewModel.startAtLogin },
+                            set: viewModel.setStartAtLogin(_:)
+                        )
+                    )
+
+                    Toggle(
+                        "Show menu bar icon",
+                        isOn: Binding(
+                            get: { viewModel.showMenuBarIcon },
+                            set: onSetShowMenuBarIcon
+                        )
+                    )
+
+                    if viewModel.showMenuBarIcon {
+                        Toggle(
+                            "Start hidden in the menu bar",
+                            isOn: Binding(
+                                get: { viewModel.startHiddenInMenuBar },
+                                set: viewModel.setStartHiddenInMenuBar(_:)
+                            )
+                        )
+                    }
+
+                    Text("When the menu bar icon is hidden, Qu Controller stays available from the main app window and Settings.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .formStyle(.grouped)
+            }
+            .tag(Tab.appBehavior)
+            .tabItem {
+                Label("App", systemImage: "app.badge")
             }
 
             SettingsPane(title: "Safety", subtitle: "Actions that affect live mixer behavior.") {

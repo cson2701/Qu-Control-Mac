@@ -10,5 +10,6 @@ xcuserdata/
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 DerivedData/
+.DerivedData/
 .derived-data/
 *.xcodeproj/xcshareddata/

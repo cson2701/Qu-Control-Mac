@@ -16,11 +16,35 @@ struct MenuBarMixerView: View {
             HStack(alignment: .center, spacing: 10) {
                 Text("Qu Controller")
                     .font(.headline)
+                    .lineLimit(1)
+                    .layoutPriority(0)
 
                 Spacer(minLength: 0)
 
                 ConnectionStatusPill(connectionState: viewModel.connectionState)
                     .scaleEffect(0.9, anchor: .trailing)
+                    .layoutPriority(1)
+
+                Menu {
+                    Button("Show Mixer") {
+                        showMainWindow(openWindow)
+                    }
+
+                    Button("Settings") {
+                        openSettings()
+                    }
+
+                    Divider()
+
+                    Button(viewModel.buttonTitle) {
+                        viewModel.toggleConnection()
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3)
+                        .accessibilityLabel("Menu")
+                }
+                .menuStyle(.borderlessButton)
             }
 
             Group {
@@ -48,25 +72,6 @@ struct MenuBarMixerView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-            }
-
-            Divider()
-
-            HStack(spacing: 10) {
-                Button("Show Mixer") {
-                    showMainWindow(openWindow)
-                }
-                .buttonStyle(.bordered)
-
-                Button("Settings") {
-                    openSettings()
-                }
-                .buttonStyle(.bordered)
-
-                Button(viewModel.buttonTitle) {
-                    viewModel.toggleConnection()
-                }
-                .buttonStyle(.borderedProminent)
             }
         }
         .padding(16)
