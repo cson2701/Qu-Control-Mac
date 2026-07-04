@@ -51,35 +51,53 @@ struct SettingsView: View {
 
             SettingsPane(title: "App Behavior", subtitle: "Launch and window behavior.") {
                 Form {
-                    Toggle(
-                        "Start on login",
-                        isOn: Binding(
-                            get: { viewModel.startAtLogin },
-                            set: viewModel.setStartAtLogin(_:)
-                        )
-                    )
-
-                    Toggle(
-                        "Show menu bar icon",
-                        isOn: Binding(
-                            get: { viewModel.showMenuBarIcon },
-                            set: onSetShowMenuBarIcon
-                        )
-                    )
-
-                    if viewModel.showMenuBarIcon {
+                    Section("Launch") {
                         Toggle(
-                            "Start hidden in the menu bar",
+                            "Start on login",
                             isOn: Binding(
-                                get: { viewModel.startHiddenInMenuBar },
-                                set: viewModel.setStartHiddenInMenuBar(_:)
+                                get: { viewModel.startAtLogin },
+                                set: viewModel.setStartAtLogin(_:)
                             )
                         )
                     }
 
-                    Text("When the menu bar icon is hidden, Qu Controller stays available from the main app window and Settings.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Section("Menu Bar") {
+                        Toggle(
+                            "Show menu bar icon",
+                            isOn: Binding(
+                                get: { viewModel.showMenuBarIcon },
+                                set: onSetShowMenuBarIcon
+                            )
+                        )
+
+                        if viewModel.showMenuBarIcon {
+                            Toggle(
+                                "Start hidden in the menu bar",
+                                isOn: Binding(
+                                    get: { viewModel.startHiddenInMenuBar },
+                                    set: viewModel.setStartHiddenInMenuBar(_:)
+                                )
+                            )
+                        }
+
+                        Text("When the menu bar icon is hidden, Qu Controller stays available from the main app window and Settings.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Signal Indicators") {
+                        Toggle(
+                            "Show signal indicators",
+                            isOn: Binding(
+                                get: { viewModel.showSignalIndicators },
+                                set: viewModel.setShowSignalIndicators(_:)
+                            )
+                        )
+
+                        Text("Show green dots when channels are active.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .formStyle(.grouped)
             }

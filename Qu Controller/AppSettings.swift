@@ -8,6 +8,7 @@ enum AppSettingsKey {
     static let autoConnectAfterDiscovery = "settings.autoConnectAfterDiscovery"
     static let startHiddenInMenuBar = "settings.startHiddenInMenuBar"
     static let showMenuBarIcon = "settings.showMenuBarIcon"
+    static let showSignalIndicators = "settings.showSignalIndicators"
 }
 
 enum AppSettings {
