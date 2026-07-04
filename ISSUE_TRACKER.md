@@ -39,7 +39,7 @@ These are the first delivery tasks for this project:
 | Todo | [#22](https://github.com/cson2701/Qu-Control-Mac/issues/22) | Add per-channel mute controls | Add mute state and toggle controls for visible mixer channels |
 | Todo | [#23](https://github.com/cson2701/Qu-Control-Mac/issues/23) | Add live channel metering | Decode and display live meter data for visible mixer channels |
 | Todo | [#26](https://github.com/cson2701/Qu-Control-Mac/issues/26) | Add USB MIDI support alongside TCP | Add USB MIDI as an alternative mixer transport |
-| In-progress | [#25](https://github.com/cson2701/Qu-Control-Mac/issues/25) | Menu bar icon won't show when turning on the switch in settings | Menu bar icon only appears on app launch when the setting was already enabled |
+| Done | [#25](https://github.com/cson2701/Qu-Control-Mac/issues/25) | Menu bar icon won't show when turning on the switch in settings | Menu bar icon only appears on app launch when the setting was already enabled |
 
 ## Suggested Execution Order
 
