@@ -14,10 +14,12 @@ struct Qu_ControllerApp: App {
     @NSApplicationDelegateAdaptor(AppVisibilityController.self) private var appVisibilityController
     @State private var controllerMode: MixerControllerFactory.ControllerMode
     @State private var viewModel: MixerScreenViewModel
+    @State private var showMenuBarIcon: Bool
 
     init() {
         let initialControllerMode = MixerControllerFactory.currentControllerMode()
         _controllerMode = State(initialValue: initialControllerMode)
+        _showMenuBarIcon = State(initialValue: AppSettings.loadShowMenuBarIcon())
         _viewModel = State(
             initialValue: MixerScreenViewModel(
                 controller: MixerControllerFactory.makeMixerController(mode: initialControllerMode)
@@ -38,8 +40,9 @@ struct Qu_ControllerApp: App {
                     }
                 )
         }
+        .defaultLaunchBehavior(shouldSuppressMainWindowOnLaunch ? .suppressed : .automatic)
 
-        MenuBarExtra {
+        MenuBarExtra(isInserted: $showMenuBarIcon) {
             MenuBarMixerView(
                 viewModel: viewModel,
                 showMainWindow: {
@@ -50,6 +53,14 @@ struct Qu_ControllerApp: App {
             Image(nsImage: menuBarImage)
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsView(
+                viewModel: viewModel,
+                onSetShowMenuBarIcon: setShowMenuBarIcon(_:)
+            )
+        }
+        .windowResizability(.contentSize)
     }
 
     private var menuBarImage: NSImage {
@@ -57,6 +68,10 @@ struct Qu_ControllerApp: App {
         image.isTemplate = true
         image.size = menuBarIconSize
         return image
+    }
+
+    private var shouldSuppressMainWindowOnLaunch: Bool {
+        viewModel.showMenuBarIcon && viewModel.startHiddenInMenuBar
     }
 
     @MainActor
@@ -75,5 +90,17 @@ struct Qu_ControllerApp: App {
         viewModel = MixerScreenViewModel(
             controller: MixerControllerFactory.makeMixerController(mode: nextMode)
         )
+        showMenuBarIcon = viewModel.showMenuBarIcon
+    }
+
+    @MainActor
+    private func setShowMenuBarIcon(_ isVisible: Bool) {
+        viewModel.setShowMenuBarIcon(isVisible)
+        showMenuBarIcon = viewModel.showMenuBarIcon
+        if showMenuBarIcon, appVisibilityController.mainWindow == nil {
+            NSApp.setActivationPolicy(.accessory)
+        } else {
+            NSApp.setActivationPolicy(.regular)
+        }
     }
 }
