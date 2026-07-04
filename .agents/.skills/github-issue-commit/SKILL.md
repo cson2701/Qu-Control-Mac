@@ -1,6 +1,6 @@
 ---
 name: github-issue-commit
-description: Commit work for a GitHub issue in this repository. Use this skill when the user asks to commit changes, prepare commits for an issue, or group modified files into clean commits. Separate unrelated changes into distinct commits where necessary, and format every commit message as `[<issue-number>] <Message>` with a concise subject of about 50 characters that starts with a capital letter.
+description: Commit work for a GitHub issue in this repository. Use this skill when the user asks to commit changes, prepare commits for an issue, or group modified files into clean commits. Group similar changes into separate commits by intent, keep unrelated changes in separate commits, and format every commit message as `[<issue-number>] <Message>` with a concise subject of about 50 characters that starts with a capital letter.
 ---
 
 # GitHub Issue Commit
@@ -21,8 +21,10 @@ git diff --stat
 
 Add targeted diffs as needed to understand how files relate.
 
-1. Group changes by intent. If there are unrelated or loosely related changes,
-create separate commits instead of one large commit.
+1. Group changes by intent before staging anything.
+1. Create a separate commit for each coherent group of similar changes.
+1. If there are unrelated or loosely related changes, they must go into
+separate commits instead of one large commit.
 1. Stage only the files that belong in the current commit.
 1. Write each commit subject in this exact format:
 
@@ -39,6 +41,8 @@ concise at around 50 characters, and describe the grouped change clearly.
   reviewable.
 - Keep generated files separate when that improves review clarity.
 - Do not mix unrelated fixes just because they are small.
+- If files change for different reasons, split them into different commits even
+  when they belong to the same issue.
 - If all changes support one tight unit of work, one commit is acceptable.
 
 ## Safety rules
@@ -52,12 +56,12 @@ concise at around 50 characters, and describe the grouped change clearly.
 ## Commit workflow
 
 Use normal non-interactive git commands. Prefer staging by explicit path. Check
-the staged diff before each commit:
+the staged diff before each commit. Repeat this workflow once per commit group:
 
 ```bash
 git diff --cached
 git commit -m "[<issue-number>] <Message>"
 ```
 
-After committing, report the commit subjects you created and note any remaining
-uncommitted changes.
+After committing, report the commit subjects you created, describe the grouping
+briefly, and note any remaining uncommitted changes.
