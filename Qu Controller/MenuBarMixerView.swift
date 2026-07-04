@@ -7,9 +7,8 @@ import SwiftUI
 
 struct MenuBarMixerView: View {
     @ObservedObject var viewModel: MixerScreenViewModel
-    let showMainWindow: (OpenWindowAction) -> Void
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.openSettings) private var openSettings
+    let showMainWindow: () -> Void
+    let showSettings: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -27,11 +26,11 @@ struct MenuBarMixerView: View {
 
                 Menu {
                     Button("Show Mixer") {
-                        showMainWindow(openWindow)
+                        showMainWindow()
                     }
 
                     Button("Settings") {
-                        openSettings()
+                        showSettings()
                     }
 
                     Divider()

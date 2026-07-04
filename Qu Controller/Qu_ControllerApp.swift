@@ -15,9 +15,14 @@ struct Qu_ControllerApp: App {
     @State private var controllerMode: MixerControllerFactory.ControllerMode
     @State private var viewModel: MixerScreenViewModel
     @State private var showMenuBarIcon: Bool
+    private let menuBarStatusItemController: MenuBarStatusItemController
 
     init() {
         let initialControllerMode = MixerControllerFactory.currentControllerMode()
+        let menuBarImage = NSImage(named: "MenuBarIcon") ?? NSImage()
+        menuBarImage.isTemplate = true
+        menuBarImage.size = NSSize(width: 18, height: 18)
+
         _controllerMode = State(initialValue: initialControllerMode)
         _showMenuBarIcon = State(initialValue: AppSettings.loadShowMenuBarIcon())
         _viewModel = State(
@@ -25,9 +30,12 @@ struct Qu_ControllerApp: App {
                 controller: MixerControllerFactory.makeMixerController(mode: initialControllerMode)
             )
         )
+        menuBarStatusItemController = MenuBarStatusItemController(image: menuBarImage)
     }
 
     var body: some Scene {
+        let _ = syncMenuBarStatusItem()
+
         Window("Qu Controller", id: AppWindowID.main) {
             ContentView(
                 viewModel: viewModel,
@@ -42,18 +50,6 @@ struct Qu_ControllerApp: App {
         }
         .defaultLaunchBehavior(shouldSuppressMainWindowOnLaunch ? .suppressed : .automatic)
 
-        MenuBarExtra(isInserted: $showMenuBarIcon) {
-            MenuBarMixerView(
-                viewModel: viewModel,
-                showMainWindow: {
-                    appVisibilityController.showMainWindow(openWindow: $0)
-                }
-            )
-        } label: {
-            Image(nsImage: menuBarImage)
-        }
-        .menuBarExtraStyle(.window)
-
         Settings {
             SettingsView(
                 viewModel: viewModel,
@@ -61,13 +57,6 @@ struct Qu_ControllerApp: App {
             )
         }
         .windowResizability(.contentSize)
-    }
-
-    private var menuBarImage: NSImage {
-        let image = NSImage(named: "MenuBarIcon") ?? NSImage()
-        image.isTemplate = true
-        image.size = menuBarIconSize
-        return image
     }
 
     private var shouldSuppressMainWindowOnLaunch: Bool {
@@ -91,16 +80,36 @@ struct Qu_ControllerApp: App {
             controller: MixerControllerFactory.makeMixerController(mode: nextMode)
         )
         showMenuBarIcon = viewModel.showMenuBarIcon
+        syncMenuBarStatusItem()
     }
 
     @MainActor
     private func setShowMenuBarIcon(_ isVisible: Bool) {
         viewModel.setShowMenuBarIcon(isVisible)
         showMenuBarIcon = viewModel.showMenuBarIcon
+        syncMenuBarStatusItem()
         if showMenuBarIcon, appVisibilityController.mainWindow == nil {
             NSApp.setActivationPolicy(.accessory)
         } else {
             NSApp.setActivationPolicy(.regular)
         }
+    }
+
+    @MainActor
+    private func syncMenuBarStatusItem() {
+        menuBarStatusItemController.update(
+            isVisible: showMenuBarIcon,
+            rootView: AnyView(
+                MenuBarMixerView(
+                    viewModel: viewModel,
+                    showMainWindow: {
+                        appVisibilityController.showMainWindow()
+                    },
+                    showSettings: {
+                        appVisibilityController.showSettingsWindow()
+                    }
+                )
+            )
+        )
     }
 }
