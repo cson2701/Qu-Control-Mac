@@ -12,6 +12,7 @@ struct MenuBarMixerView: View {
     let closePopover: () -> Void
     let registerOpenMainWindow: (@escaping () -> Void) -> Void
     @Environment(\.openSettings) private var openSettings
+    @State private var isShowingShutdownConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -36,12 +37,23 @@ struct MenuBarMixerView: View {
                         closePopover()
                         openSettings()
                     }
+                    .keyboardShortcut(",", modifiers: .command)
 
                     Divider()
 
                     Button(viewModel.buttonTitle) {
                         viewModel.toggleConnection()
                     }
+                    
+                    Button("Shut Down Mixer", role: .destructive) {
+                        if viewModel.confirmBeforeShutdown {
+                            isShowingShutdownConfirmation = true
+                        } else {
+                            closePopover()
+                            viewModel.shutdownMixer()
+                        }
+                    }
+                    .disabled(!viewModel.isShutdownAvailable)
 
                     Divider()
 
@@ -49,6 +61,7 @@ struct MenuBarMixerView: View {
                         closePopover()
                         NSApp.terminate(nil)
                     }
+                    .keyboardShortcut("q", modifiers: .command)
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .font(.title3)
@@ -99,6 +112,19 @@ struct MenuBarMixerView: View {
                 viewModel.toggleMainLRMute()
             }
         )
+        .confirmationDialog(
+            "Shut Down Mixer",
+            isPresented: $isShowingShutdownConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Shut Down Mixer", role: .destructive) {
+                closePopover()
+                viewModel.shutdownMixer()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will power off the connected Qu mixer. You will need a hard power reset to turn it back on.")
+        }
     }
 }
 
