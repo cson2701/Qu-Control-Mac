@@ -8,6 +8,7 @@ import Foundation
 enum MixerControllerFactory {
     enum ControllerMode: Equatable {
         case network
+        case usbMIDI
         case mock
     }
 
@@ -22,6 +23,8 @@ enum MixerControllerFactory {
             return MockMixerController()
         case .network:
             return QuNetworkMixerController()
+        case .usbMIDI:
+            return QuUSBMIDIMixerController()
         }
     }
 
@@ -36,13 +39,14 @@ enum MixerControllerFactory {
         }
 #endif
 
-        return .network
+        return AppSettings.loadMixerTransportKind(from: userDefaults) == .usbMIDI ? .usbMIDI : .network
     }
 
     static func setDebugControllerMode(_ mode: ControllerMode, userDefaults: UserDefaults = .standard) {
 #if DEBUG
         let storedValue = switch mode {
         case .network: "network"
+        case .usbMIDI: "usbMIDI"
         case .mock: "mock"
         }
         userDefaults.set(storedValue, forKey: StorageKey.debugControllerMode)

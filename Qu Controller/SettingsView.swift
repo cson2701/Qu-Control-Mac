@@ -10,6 +10,7 @@ struct SettingsView: View {
     }
 
     @ObservedObject var viewModel: MixerScreenViewModel
+    let onSetTransportKind: (MixerTransportKind) -> Void
     let onSetShowMenuBarIcon: (Bool) -> Void
     @State private var selectedTab: Tab = .connection
 
@@ -30,17 +31,56 @@ struct SettingsView: View {
         TabView(selection: $selectedTab) {
             SettingsPane(title: "Connection", subtitle: "Connection and discovery behavior.") {
                 Form {
-                    Toggle(
-                        "Automatically connect after mixer is found",
-                        isOn: Binding(
-                            get: { viewModel.autoConnectAfterDiscovery },
-                            set: viewModel.setAutoConnectAfterDiscovery(_:)
+                    Picker(
+                        "Transport",
+                        selection: Binding(
+                            get: { viewModel.transportKind },
+                            set: onSetTransportKind
                         )
-                    )
+                    ) {
+                        ForEach(MixerTransportKind.allCases) { transportKind in
+                            Text(transportKind.displayName).tag(transportKind)
+                        }
+                    }
 
-                    Text("Discovery tries the last successfully connected IP first, then falls back to subnet scanning.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if viewModel.transportKind == .network {
+                        Toggle(
+                            "Automatically connect after mixer is found",
+                            isOn: Binding(
+                                get: { viewModel.autoConnectAfterDiscovery },
+                                set: viewModel.setAutoConnectAfterDiscovery(_:)
+                            )
+                        )
+
+                        Text("Discovery tries the last successfully connected IP first, then falls back to subnet scanning.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Picker(
+                            "USB MIDI Device",
+                            selection: Binding(
+                                get: { viewModel.selectedUSBMIDIDeviceID ?? "" },
+                                set: viewModel.setSelectedUSBMIDIDeviceID(_:)
+                            )
+                        ) {
+                            if viewModel.connectionOptions.isEmpty {
+                                Text("No USB MIDI devices found").tag("")
+                            } else {
+                                ForEach(viewModel.connectionOptions) { option in
+                                    Text(option.displayName).tag(option.id)
+                                }
+                            }
+                        }
+
+                        Button("Refresh USB MIDI Devices") {
+                            viewModel.refreshConnectionOptions()
+                        }
+                        .disabled(!viewModel.canRefreshUSBDevices)
+
+                        Text("Choose the mixer’s USB MIDI device before connecting.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .formStyle(.grouped)
             }

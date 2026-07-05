@@ -1,8 +1,3 @@
-//
-//  QuNetworkMixerController.swift
-//  Qu Controller
-//
-
 import Combine
 import Foundation
 import Network
@@ -11,7 +6,9 @@ import Network
 // docs/IMPLEMENTATION_REFERENCES.md
 @MainActor
 final class QuNetworkMixerController: MixerController {
-    @Published private var storedChannels: [MixerChannelState] = QuNetworkMixerController.makeInitialChannels()
+    let transportKind: MixerTransportKind = .network
+
+    @Published private var storedChannels: [MixerChannelState] = QuMidiControllerSupport.makeInitialChannels()
     @Published private var storedConnectionState = MixerConnectionState(
         phase: .disconnected,
         message: "Disconnected",
@@ -26,12 +23,20 @@ final class QuNetworkMixerController: MixerController {
         storedConnectionState
     }
 
+    var connectionOptions: [MixerConnectionOption] {
+        []
+    }
+
     var channelsPublisher: AnyPublisher<[MixerChannelState], Never> {
         $storedChannels.eraseToAnyPublisher()
     }
 
     var connectionStatePublisher: AnyPublisher<MixerConnectionState, Never> {
         $storedConnectionState.eraseToAnyPublisher()
+    }
+
+    var connectionOptionsPublisher: AnyPublisher<[MixerConnectionOption], Never> {
+        Empty(completeImmediately: false).eraseToAnyPublisher()
     }
 
     private let connectionQueue = DispatchQueue(label: "com.scrapps.qucontroller.network")
@@ -49,7 +54,16 @@ final class QuNetworkMixerController: MixerController {
     private var isSignalMonitoringEnabled = false
     private var pendingSignalStates: [MixerChannelID: Bool] = [:]
 
-    func connect(to endpoint: MixerEndpoint) async {
+    func connect(to target: MixerConnectionTarget) async {
+        guard case .network(let endpoint) = target else {
+            storedConnectionState = MixerConnectionState(
+                phase: .error,
+                message: formattedErrorMessage(for: MixerTransportError.unsupportedTarget, prefix: "Connection failed"),
+                endpoint: nil
+            )
+            return
+        }
+
         await disconnectTransport(updateState: false, intentional: false)
         isIntentionalDisconnect = false
 
@@ -65,7 +79,7 @@ final class QuNetworkMixerController: MixerController {
             connection = nwConnection
             startReceiving(on: nwConnection, endpoint: endpoint)
             startActiveSensing()
-            try await sendSystemStateRequest()
+            try await sendBytes(QuMidiMessageEncoder.systemStateRequest())
         } catch {
             await handleConnectionFailure(error, endpoint: endpoint, prefix: "Connection failed")
         }
@@ -88,7 +102,7 @@ final class QuNetworkMixerController: MixerController {
         }
 
         do {
-            try await sendRemoteShutdown(midiChannel: midiChannel)
+            try await sendBytes(QuMidiMessageEncoder.remoteShutdown(midiChannel: midiChannel))
             let endpoint = storedConnectionState.endpoint
             await disconnectTransport(updateState: false, intentional: true)
             storedConnectionState = MixerConnectionState(
@@ -102,18 +116,7 @@ final class QuNetworkMixerController: MixerController {
     }
 
     func setLevel(for channelID: MixerChannelID, level: FaderLevel) {
-        storedChannels = storedChannels.map { channel in
-            guard channel.id == channelID else {
-                return channel
-            }
-            return MixerChannelState(
-                id: channel.id,
-                level: level,
-                isMuted: channel.isMuted,
-                hasSignal: channel.hasSignal,
-                customName: channel.customName
-            )
-        }
+        storedChannels = QuMidiControllerSupport.setLevel(storedChannels, channelID: channelID, level: level)
 
         guard let midiChannel else {
             return
@@ -121,37 +124,23 @@ final class QuNetworkMixerController: MixerController {
 
         Task {
             do {
-                try await sendNRPN(
-                    midiChannel: midiChannel,
-                    targetChannel: channelID.midiChannelCode,
-                    parameterID: 0x17,
-                    value: UInt8(level.toMIDIValue()),
-                    index: 0x07
+                try await sendBytes(
+                    QuMidiMessageEncoder.nrpn(
+                        midiChannel: midiChannel,
+                        targetChannel: channelID.midiChannelCode,
+                        parameterID: 0x17,
+                        value: UInt8(level.toMIDIValue()),
+                        index: 0x07
+                    )
                 )
             } catch {
-                await handleConnectionFailure(
-                    error,
-                    endpoint: storedConnectionState.endpoint,
-                    prefix: "Send failed"
-                )
+                await handleConnectionFailure(error, endpoint: storedConnectionState.endpoint, prefix: "Send failed")
             }
         }
     }
 
     func setMute(for channelID: MixerChannelID, isMuted: Bool) {
-        storedChannels = storedChannels.map { channel in
-            guard channel.id == channelID else {
-                return channel
-            }
-
-            return MixerChannelState(
-                id: channel.id,
-                level: channel.level,
-                isMuted: isMuted,
-                hasSignal: channel.hasSignal,
-                customName: channel.customName
-            )
-        }
+        storedChannels = QuMidiControllerSupport.setMute(storedChannels, channelID: channelID, isMuted: isMuted)
 
         guard let midiChannel else {
             return
@@ -159,17 +148,15 @@ final class QuNetworkMixerController: MixerController {
 
         Task {
             do {
-                try await sendMute(
-                    midiChannel: midiChannel,
-                    targetChannel: channelID.midiChannelCode,
-                    isMuted: isMuted
+                try await sendBytes(
+                    QuMidiMessageEncoder.mute(
+                        midiChannel: midiChannel,
+                        targetChannel: channelID.midiChannelCode,
+                        isMuted: isMuted
+                    )
                 )
             } catch {
-                await handleConnectionFailure(
-                    error,
-                    endpoint: storedConnectionState.endpoint,
-                    prefix: "Send failed"
-                )
+                await handleConnectionFailure(error, endpoint: storedConnectionState.endpoint, prefix: "Send failed")
             }
         }
     }
@@ -189,17 +176,15 @@ final class QuNetworkMixerController: MixerController {
                 }
             } catch {
                 if isEnabled {
-                    await handleConnectionFailure(
-                        error,
-                        endpoint: storedConnectionState.endpoint,
-                        prefix: "Signal monitoring failed"
-                    )
+                    await handleConnectionFailure(error, endpoint: storedConnectionState.endpoint, prefix: "Signal monitoring failed")
                 } else {
                     clearSignalStates()
                 }
             }
         }
     }
+
+    func refreshConnectionOptions() {}
 
     private func makeConnection(for endpoint: MixerEndpoint) async throws -> NWConnection {
         guard let port = NWEndpoint.Port(rawValue: UInt16(endpoint.port)) else {
@@ -258,11 +243,7 @@ final class QuNetworkMixerController: MixerController {
                 }
 
                 if isComplete {
-                    await self.handleConnectionFailure(
-                        MixerTransportError.connectionClosed,
-                        endpoint: endpoint,
-                        prefix: "Connection lost"
-                    )
+                    await self.handleConnectionFailure(MixerTransportError.connectionClosed, endpoint: endpoint, prefix: "Connection lost")
                     return
                 }
 
@@ -316,11 +297,7 @@ final class QuNetworkMixerController: MixerController {
                 do {
                     try await self.sendBytes([0xFE])
                 } catch {
-                    await self.handleConnectionFailure(
-                        error,
-                        endpoint: self.storedConnectionState.endpoint,
-                        prefix: "Connection lost"
-                    )
+                    await self.handleConnectionFailure(error, endpoint: self.storedConnectionState.endpoint, prefix: "Connection lost")
                     return
                 }
 
@@ -329,19 +306,13 @@ final class QuNetworkMixerController: MixerController {
         }
     }
 
-    private func sendSystemStateRequest() async throws {
-        try await sendBytes([0xF0, 0x00, 0x00, 0x1A, 0x50, 0x11, 0x01, 0x00, 0x7F, 0x10, 0x01, 0xF7])
-    }
-
     private func requestChannelNames() async throws {
         guard let midiChannel else {
             return
         }
 
         for channelID in MixerChannelID.selectableChannels {
-            try await sendBytes([
-                0xF0, 0x00, 0x00, 0x1A, 0x50, 0x11, 0x01, 0x00, midiChannel, 0x01, channelID.midiChannelCode, 0xF7
-            ])
+            try await sendBytes(QuMidiMessageEncoder.channelNameRequest(midiChannel: midiChannel, channelID: channelID))
         }
     }
 
@@ -355,41 +326,7 @@ final class QuNetworkMixerController: MixerController {
         }
 
         let requestChannel = midiChannel ?? 0x7F
-        try await sendBytes([0xF0, 0x00, 0x00, 0x1A, 0x50, 0x11, 0x01, 0x00, requestChannel, 0x12, isEnabled ? 0x01 : 0x00, 0xF7])
-    }
-
-    private func sendNRPN(
-        midiChannel: UInt8,
-        targetChannel: UInt8,
-        parameterID: UInt8,
-        value: UInt8,
-        index: UInt8
-    ) async throws {
-        let status = 0xB0 | midiChannel
-        try await sendBytes([
-            status, 0x63, targetChannel,
-            status, 0x62, parameterID,
-            status, 0x06, value,
-            status, 0x26, index
-        ])
-    }
-
-    private func sendMute(midiChannel: UInt8, targetChannel: UInt8, isMuted: Bool) async throws {
-        let status = 0x90 | midiChannel
-        try await sendBytes([
-            status, targetChannel, isMuted ? 0x7F : 0x3F,
-            status, targetChannel, 0x00
-        ])
-    }
-
-    private func sendRemoteShutdown(midiChannel: UInt8) async throws {
-        let status = 0xB0 | midiChannel
-        try await sendBytes([
-            status, 0x63, 0x00,
-            status, 0x62, 0x5F,
-            status, 0x06, 0x00,
-            status, 0x26, 0x00
-        ])
+        try await sendBytes(QuMidiMessageEncoder.meterRequest(requestChannel: requestChannel, isEnabled: isEnabled))
     }
 
     private func sendBytes(_ bytes: [UInt8]) async throws {
@@ -436,21 +373,8 @@ final class QuNetworkMixerController: MixerController {
             }
 
             let nameBytes = Array(bytes[11..<(bytes.count - 1)])
-            let decodedName = sanitizedChannelName(from: nameBytes)
-
-            storedChannels = storedChannels.map { channel in
-                guard channel.id == channelID else {
-                    return channel
-                }
-
-                return MixerChannelState(
-                    id: channel.id,
-                    level: channel.level,
-                    isMuted: channel.isMuted,
-                    hasSignal: channel.hasSignal,
-                    customName: decodedName
-                )
-            }
+            let decodedName = QuMidiControllerSupport.sanitizedChannelName(from: nameBytes)
+            storedChannels = QuMidiControllerSupport.setCustomName(storedChannels, channelID: channelID, customName: decodedName)
         case 0x11:
             connectionTimeoutTask?.cancel()
             connectionTimeoutTask = nil
@@ -518,18 +442,7 @@ final class QuNetworkMixerController: MixerController {
                let dataMSB = nrpnState.dataMSB
             {
                 let level = FaderLevel(normalized: Double(dataMSB) / 127)
-                storedChannels = storedChannels.map { channel in
-                    guard channel.id == channelID else {
-                        return channel
-                    }
-                    return MixerChannelState(
-                        id: channel.id,
-                        level: level,
-                        isMuted: channel.isMuted,
-                        hasSignal: channel.hasSignal,
-                        customName: channel.customName
-                    )
-                }
+                storedChannels = QuMidiControllerSupport.setLevel(storedChannels, channelID: channelID, level: level)
             }
             nrpnState.clear()
         default:
@@ -552,37 +465,19 @@ final class QuNetworkMixerController: MixerController {
         }
 
         let isMuted = velocity >= 0x40
-        storedChannels = storedChannels.map { channel in
-            guard channel.id == channelID else {
-                return channel
-            }
-
-            return MixerChannelState(
-                id: channel.id,
-                level: channel.level,
-                isMuted: isMuted,
-                hasSignal: channel.hasSignal,
-                customName: channel.customName
-            )
-        }
+        storedChannels = QuMidiControllerSupport.setMute(storedChannels, channelID: channelID, isMuted: isMuted)
     }
 
     private func handleMeterDataPayload(_ payload: [UInt8]) {
         guard isSignalMonitoringEnabled,
-              let signalLevels = QuSignalActivityDecoder.decodeSignalLevels(
-                  from7BitPayload: payload,
-                  mixerModel: mixerModel
-              ) else {
+              let signalLevels = QuSignalActivityDecoder.decodeSignalLevels(from7BitPayload: payload, mixerModel: mixerModel) else {
             return
         }
 
         var resolvedStates: [MixerChannelID: Bool] = [:]
         for channel in storedChannels {
             let decibels = signalLevels[channel.id] ?? QuSignalActivityDecoder.silenceFloor
-            resolvedStates[channel.id] = resolvedSignalState(
-                currentState: channel.hasSignal,
-                decibels: decibels
-            )
+            resolvedStates[channel.id] = resolvedSignalState(currentState: channel.hasSignal, decibels: decibels)
         }
 
         pendingSignalStates = resolvedStates
@@ -630,30 +525,14 @@ final class QuNetworkMixerController: MixerController {
             return
         }
 
-        storedChannels = storedChannels.map { channel in
-            MixerChannelState(
-                id: channel.id,
-                level: channel.level,
-                isMuted: channel.isMuted,
-                hasSignal: signalStates[channel.id] ?? false,
-                customName: channel.customName
-            )
-        }
+        storedChannels = QuMidiControllerSupport.applySignalStates(storedChannels, signalStates: signalStates)
     }
 
     private func clearSignalStates() {
         pendingSignalStates.removeAll(keepingCapacity: false)
         signalPublishTask?.cancel()
         signalPublishTask = nil
-        storedChannels = storedChannels.map { channel in
-            MixerChannelState(
-                id: channel.id,
-                level: channel.level,
-                isMuted: channel.isMuted,
-                hasSignal: false,
-                customName: channel.customName
-            )
-        }
+        storedChannels = QuMidiControllerSupport.applySignalStates(storedChannels, signalStates: [:])
     }
 
     private func disconnectTransport(updateState: Bool, intentional: Bool) async {
@@ -672,15 +551,7 @@ final class QuNetworkMixerController: MixerController {
         byteBuffer.removeAll(keepingCapacity: false)
         nrpnState.clear()
         pendingSignalStates.removeAll(keepingCapacity: false)
-        storedChannels = storedChannels.map { channel in
-            MixerChannelState(
-                id: channel.id,
-                level: channel.level,
-                isMuted: false,
-                hasSignal: false,
-                customName: channel.customName
-            )
-        }
+        storedChannels = QuMidiControllerSupport.clearTransientState(storedChannels)
 
         if updateState {
             storedConnectionState = MixerConnectionState(
@@ -718,32 +589,6 @@ final class QuNetworkMixerController: MixerController {
 
         return "\(prefix): \(rawMessage)"
     }
-
-    private static func makeInitialChannels() -> [MixerChannelState] {
-        MixerChannelID.selectableChannels.map { channelID in
-            MixerChannelState(
-                id: channelID,
-                level: FaderLevel(normalized: channelID == .mainLr ? 0.72 : 0),
-                isMuted: false,
-                hasSignal: false,
-                customName: nil
-            )
-        }
-    }
-
-    private func sanitizedChannelName(from nameBytes: [UInt8]) -> String? {
-        let filteredBytes = nameBytes.filter { byte in
-            byte != 0x00 && byte >= 0x20 && byte <= 0x7E
-        }
-
-        guard let decodedName = String(bytes: filteredBytes, encoding: .ascii)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-            !decodedName.isEmpty else {
-            return nil
-        }
-
-        return decodedName
-    }
 }
 
 private struct NRPNState {
@@ -772,202 +617,5 @@ private final class ConnectionStartState: @unchecked Sendable {
 
         resumed = true
         return true
-    }
-}
-
-private enum MixerTransportError: LocalizedError {
-    case invalidPort(Int)
-    case cancelledBeforeReady
-    case notConnected
-    case connectionClosed
-    case connectionTimedOut(seconds: Int)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidPort(let port):
-            "Invalid mixer port \(port)"
-        case .cancelledBeforeReady:
-            "Connection cancelled before ready"
-        case .notConnected:
-            "Not connected"
-        case .connectionClosed:
-            "Connection closed by mixer"
-        case .connectionTimedOut(let seconds):
-            "No response within \(seconds) seconds"
-        }
-    }
-}
-
-private extension FaderLevel {
-    func toMIDIValue() -> Int {
-        let clampedValue = min(max(normalized, 0), 1)
-        return Int((clampedValue * 127).rounded(.towardZero))
-    }
-}
-
-private enum QuMixerModel {
-    case qu16
-    case qu24
-    case qu32Family
-
-    init?(boxID: UInt8) {
-        switch boxID {
-        case 1:
-            self = .qu16
-        case 2:
-            self = .qu24
-        case 3, 4, 5:
-            self = .qu32Family
-        default:
-            return nil
-        }
-    }
-}
-
-private enum QuSignalActivityDecoder {
-    static let silenceFloor = -128.0
-
-    fileprivate static let monoInputBlockSize = 10
-    fileprivate static let stereoInputBlockSize = 20
-    fileprivate static let monoMixBlockSize = 10
-    fileprivate static let stereoMixBlockSize = 20
-    fileprivate static let stereoMonitorBlockSize = 78
-    private static let monoInputSignalOffsets = [0, 1, 2, 3, 6]
-    private static let lrStereoMixSignalOffsets = [5, 15]
-    private static let mainMonitorSignalOffsets = [5, 6, 7, 8, 11, 12]
-
-    static func decodeSignalLevels(
-        from7BitPayload payload: [UInt8],
-        mixerModel: QuMixerModel?
-    ) -> [MixerChannelID: Double]? {
-        let bytes = unpack7Bitized(payload)
-        guard !bytes.isEmpty else {
-            return nil
-        }
-
-        let meterValues = decodeMeterValues(from: bytes)
-        guard let layout = resolveLayout(for: meterValues.count, mixerModel: mixerModel) else {
-            return nil
-        }
-
-        var result: [MixerChannelID: Double] = [:]
-
-        for channelIndex in 0 ..< 16 {
-            let blockStart = channelIndex * monoInputBlockSize
-            let blockEnd = blockStart + monoInputBlockSize
-            guard blockEnd <= meterValues.count else {
-                break
-            }
-
-            let channelID = MixerChannelID.selectableChannels[channelIndex]
-            result[channelID] = monoInputSignalOffsets
-                .compactMap { offset in
-                    let meterIndex = blockStart + offset
-                    return meterIndex < blockEnd ? meterValues[meterIndex] : nil
-                }
-                .max() ?? silenceFloor
-        }
-
-        let mainLRCandidates =
-            mainMonitorSignalOffsets.compactMap { offset -> Double? in
-                let meterIndex = layout.monitorBlockStartOffset + offset
-                guard meterIndex < meterValues.count else {
-                    return nil
-                }
-                return meterValues[meterIndex]
-            } +
-            lrStereoMixSignalOffsets.compactMap { offset -> Double? in
-                let meterIndex = layout.lrStereoMixBlockStartOffset + offset
-                guard meterIndex < meterValues.count else {
-                    return nil
-                }
-                return meterValues[meterIndex]
-            }
-
-        result[.mainLr] = mainLRCandidates.max() ?? silenceFloor
-        return result
-    }
-
-    private static func unpack7Bitized(_ payload: [UInt8]) -> [UInt8] {
-        var unpacked: [UInt8] = []
-        var index = 0
-
-        while index < payload.count {
-            let header = payload[index]
-            index += 1
-
-            let remaining = payload.count - index
-            let chunkSize = min(7, remaining)
-            guard chunkSize > 0 else {
-                break
-            }
-
-            for bitIndex in 0 ..< chunkSize {
-                let lowBits = payload[index + bitIndex] & 0x7F
-                let highBit = ((header >> (6 - bitIndex)) & 0x01) << 7
-                unpacked.append(lowBits | highBit)
-            }
-
-            index += chunkSize
-        }
-
-        return unpacked
-    }
-
-    private static func decodeMeterValues(from bytes: [UInt8]) -> [Double] {
-        var values: [Double] = []
-        values.reserveCapacity(bytes.count / 2)
-
-        var index = 0
-        while index + 1 < bytes.count {
-            let rawValue = UInt16(bytes[index]) << 8 | UInt16(bytes[index + 1])
-            let signedValue = Int16(bitPattern: rawValue &- 0x8000)
-            values.append(Double(signedValue) / 256.0)
-            index += 2
-        }
-
-        return values
-    }
-
-    private static func resolveLayout(for meterCount: Int, mixerModel: QuMixerModel?) -> QuSignalLayout? {
-        if let mixerModel {
-            let preferredLayout = QuSignalLayout(for: mixerModel)
-            if meterCount >= preferredLayout.minimumMeterCount {
-                return preferredLayout
-            }
-        }
-
-        let layouts = [
-            QuSignalLayout(for: .qu16),
-            QuSignalLayout(for: .qu24),
-            QuSignalLayout(for: .qu32Family)
-        ]
-
-        return layouts
-            .filter { meterCount >= $0.minimumMeterCount }
-            .min { abs($0.minimumMeterCount - meterCount) < abs($1.minimumMeterCount - meterCount) }
-    }
-}
-
-private struct QuSignalLayout {
-    let minimumMeterCount: Int
-    let lrStereoMixBlockStartOffset: Int
-    let monitorBlockStartOffset: Int
-
-    init(for mixerModel: QuMixerModel) {
-        switch mixerModel {
-        case .qu16:
-            lrStereoMixBlockStartOffset = (16 * QuSignalActivityDecoder.monoInputBlockSize) + 80 + (3 * QuSignalActivityDecoder.stereoInputBlockSize) + 20 + (4 * QuSignalActivityDecoder.monoMixBlockSize) + (3 * QuSignalActivityDecoder.stereoMixBlockSize)
-            minimumMeterCount = (16 * QuSignalActivityDecoder.monoInputBlockSize) + 80 + (3 * QuSignalActivityDecoder.stereoInputBlockSize) + 20 + (4 * QuSignalActivityDecoder.monoMixBlockSize) + (4 * QuSignalActivityDecoder.stereoMixBlockSize) + QuSignalActivityDecoder.stereoMonitorBlockSize + (4 * 18)
-            monitorBlockStartOffset = (16 * QuSignalActivityDecoder.monoInputBlockSize) + 80 + (3 * QuSignalActivityDecoder.stereoInputBlockSize) + 20 + (4 * QuSignalActivityDecoder.monoMixBlockSize) + (4 * QuSignalActivityDecoder.stereoMixBlockSize)
-        case .qu24:
-            lrStereoMixBlockStartOffset = (24 * QuSignalActivityDecoder.monoInputBlockSize) + (3 * QuSignalActivityDecoder.stereoInputBlockSize) + 180 + (4 * QuSignalActivityDecoder.monoMixBlockSize) + (3 * QuSignalActivityDecoder.stereoMixBlockSize)
-            minimumMeterCount = (24 * QuSignalActivityDecoder.monoInputBlockSize) + (3 * QuSignalActivityDecoder.stereoInputBlockSize) + 180 + (4 * QuSignalActivityDecoder.monoMixBlockSize) + (4 * QuSignalActivityDecoder.stereoMixBlockSize) + (2 * QuSignalActivityDecoder.stereoMixBlockSize) + (2 * QuSignalActivityDecoder.stereoMixBlockSize) + QuSignalActivityDecoder.stereoMonitorBlockSize + (4 * 18)
-            monitorBlockStartOffset = (24 * QuSignalActivityDecoder.monoInputBlockSize) + (3 * QuSignalActivityDecoder.stereoInputBlockSize) + 180 + (4 * QuSignalActivityDecoder.monoMixBlockSize) + (4 * QuSignalActivityDecoder.stereoMixBlockSize) + (2 * QuSignalActivityDecoder.stereoMixBlockSize) + (2 * QuSignalActivityDecoder.stereoMixBlockSize)
-        case .qu32Family:
-            lrStereoMixBlockStartOffset = (24 * QuSignalActivityDecoder.monoInputBlockSize) + (3 * QuSignalActivityDecoder.stereoInputBlockSize) + 20 + (8 * QuSignalActivityDecoder.monoInputBlockSize) + (4 * QuSignalActivityDecoder.monoMixBlockSize) + (3 * QuSignalActivityDecoder.stereoMixBlockSize)
-            minimumMeterCount = (24 * QuSignalActivityDecoder.monoInputBlockSize) + (3 * QuSignalActivityDecoder.stereoInputBlockSize) + 20 + (8 * QuSignalActivityDecoder.monoInputBlockSize) + (4 * QuSignalActivityDecoder.monoMixBlockSize) + (4 * QuSignalActivityDecoder.stereoMixBlockSize) + (4 * QuSignalActivityDecoder.stereoMixBlockSize) + (2 * QuSignalActivityDecoder.stereoMixBlockSize) + QuSignalActivityDecoder.stereoMonitorBlockSize + (4 * 18)
-            monitorBlockStartOffset = (24 * QuSignalActivityDecoder.monoInputBlockSize) + (3 * QuSignalActivityDecoder.stereoInputBlockSize) + 20 + (8 * QuSignalActivityDecoder.monoInputBlockSize) + (4 * QuSignalActivityDecoder.monoMixBlockSize) + (4 * QuSignalActivityDecoder.stereoMixBlockSize) + (4 * QuSignalActivityDecoder.stereoMixBlockSize) + (2 * QuSignalActivityDecoder.stereoMixBlockSize)
-        }
     }
 }

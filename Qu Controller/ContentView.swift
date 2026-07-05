@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var viewModel: MixerScreenViewModel
+    let onSetTransportKind: (MixerTransportKind) -> Void
     let isUsingMockConnection: Bool
     let onSetUseMockConnection: (Bool) -> Void
     @Environment(\.openSettings) private var openSettings
@@ -138,21 +139,61 @@ struct ContentView: View {
 
             ConnectionStatusPill(connectionState: viewModel.connectionState)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Qu mixer IP")
-                    .font(.headline)
+            Picker(
+                "Transport",
+                selection: Binding(
+                    get: { viewModel.transportKind },
+                    set: onSetTransportKind
+                )
+            ) {
+                ForEach(MixerTransportKind.allCases) { transportKind in
+                    Text(transportKind.displayName).tag(transportKind)
+                }
+            }
+            .pickerStyle(.segmented)
 
-                TextField("192.168.4.198", text: $viewModel.host)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit {
-                        if viewModel.connectionState.phase == .disconnected || viewModel.connectionState.phase == .error {
-                            viewModel.toggleConnection()
+            if viewModel.transportKind == .network {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Qu mixer IP")
+                        .font(.headline)
+
+                    TextField("192.168.4.198", text: $viewModel.host)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit {
+                            if viewModel.connectionState.phase == .disconnected || viewModel.connectionState.phase == .error {
+                                viewModel.toggleConnection()
+                            }
+                        }
+
+                    Text("Port 51325")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("USB MIDI device")
+                        .font(.headline)
+
+                    Picker(
+                        "USB MIDI Device",
+                        selection: Binding(
+                            get: { viewModel.selectedUSBMIDIDeviceID ?? "" },
+                            set: viewModel.setSelectedUSBMIDIDeviceID(_:)
+                        )
+                    ) {
+                        if viewModel.connectionOptions.isEmpty {
+                            Text("No USB MIDI devices found").tag("")
+                        } else {
+                            ForEach(viewModel.connectionOptions) { option in
+                                Text(option.displayName).tag(option.id)
+                            }
                         }
                     }
 
-                Text("Port 51325")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    Text("Connect directly to the mixer over USB MIDI.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             HStack(spacing: 10) {
@@ -161,15 +202,23 @@ struct ContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
 
-                Button(viewModel.scanButtonTitle) {
-                    if viewModel.isScanningForMixer {
-                        viewModel.stopScanningForMixer()
-                    } else {
-                        viewModel.scanForMixer()
+                if viewModel.transportKind == .network {
+                    Button(viewModel.scanButtonTitle) {
+                        if viewModel.isScanningForMixer {
+                            viewModel.stopScanningForMixer()
+                        } else {
+                            viewModel.scanForMixer()
+                        }
                     }
+                    .buttonStyle(.bordered)
+                    .disabled(!viewModel.isScanningForMixer && !viewModel.isAutoScanAvailable)
+                } else {
+                    Button("Refresh Devices") {
+                        viewModel.refreshConnectionOptions()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!viewModel.canRefreshUSBDevices)
                 }
-                .buttonStyle(.bordered)
-                .disabled(!viewModel.isScanningForMixer && !viewModel.isAutoScanAvailable)
 
                 Button("Settings") {
                     openSettings()
@@ -276,6 +325,7 @@ struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView(
             viewModel: MixerScreenViewModel(controller: MockMixerController()),
+            onSetTransportKind: { _ in },
             isUsingMockConnection: true,
             onSetUseMockConnection: { _ in }
         )

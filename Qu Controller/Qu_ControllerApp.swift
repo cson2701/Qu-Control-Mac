@@ -45,6 +45,7 @@ struct Qu_ControllerApp: App {
         Window("Qu Controller", id: AppWindowID.main) {
             ContentView(
                 viewModel: viewModel,
+                onSetTransportKind: updateTransportKind(_:),
                 isUsingMockConnection: controllerMode.usesMockConnection,
                 onSetUseMockConnection: updateMockConnectionUsage(_:)
             )
@@ -64,6 +65,7 @@ struct Qu_ControllerApp: App {
         Settings {
             SettingsView(
                 viewModel: viewModel,
+                onSetTransportKind: updateTransportKind(_:),
                 onSetShowMenuBarIcon: setShowMenuBarIcon(_:)
             )
         }
@@ -81,7 +83,11 @@ struct Qu_ControllerApp: App {
 
     @MainActor
     private func updateMockConnectionUsage(_ usesMockConnection: Bool) {
-        let nextMode: MixerControllerFactory.ControllerMode = usesMockConnection ? .mock : .network
+        let nextMode: MixerControllerFactory.ControllerMode = if usesMockConnection {
+            .mock
+        } else {
+            mode(for: AppSettings.loadMixerTransportKind())
+        }
         guard nextMode != controllerMode else {
             return
         }
@@ -92,6 +98,27 @@ struct Qu_ControllerApp: App {
 
         controllerMode = nextMode
         MixerControllerFactory.setDebugControllerMode(nextMode)
+        viewModel = MixerScreenViewModel(
+            controller: MixerControllerFactory.makeMixerController(mode: nextMode)
+        )
+        showMenuBarIcon = viewModel.showMenuBarIcon
+        syncMenuBarStatusItem()
+    }
+
+    @MainActor
+    private func updateTransportKind(_ transportKind: MixerTransportKind) {
+        UserDefaults.standard.set(transportKind.rawValue, forKey: AppSettingsKey.mixerTransportKind)
+
+        guard !controllerMode.usesMockConnection else {
+            return
+        }
+
+        let nextMode = mode(for: transportKind)
+        guard nextMode != controllerMode else {
+            return
+        }
+
+        controllerMode = nextMode
         viewModel = MixerScreenViewModel(
             controller: MixerControllerFactory.makeMixerController(mode: nextMode)
         )
@@ -131,6 +158,15 @@ struct Qu_ControllerApp: App {
                 )
             )
         )
+    }
+
+    private func mode(for transportKind: MixerTransportKind) -> MixerControllerFactory.ControllerMode {
+        switch transportKind {
+        case .network:
+            .network
+        case .usbMIDI:
+            .usbMIDI
+        }
     }
 }
 

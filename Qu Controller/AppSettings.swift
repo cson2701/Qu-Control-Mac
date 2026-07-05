@@ -4,6 +4,8 @@ import ServiceManagement
 enum AppSettingsKey {
     static let layoutPreferences = "mixer.layoutPreferences"
     static let lastSuccessfulHost = "mixer.lastSuccessfulHost"
+    static let mixerTransportKind = "settings.mixerTransportKind"
+    static let selectedUSBMIDIDeviceID = "settings.selectedUSBMIDIDeviceID"
     static let confirmBeforeShutdown = "settings.confirmBeforeShutdown"
     static let autoConnectAfterDiscovery = "settings.autoConnectAfterDiscovery"
     static let startHiddenInMenuBar = "settings.startHiddenInMenuBar"
@@ -12,6 +14,15 @@ enum AppSettingsKey {
 }
 
 enum AppSettings {
+    static func loadMixerTransportKind(from userDefaults: UserDefaults = .standard) -> MixerTransportKind {
+        guard let rawValue = userDefaults.string(forKey: AppSettingsKey.mixerTransportKind),
+              let transportKind = MixerTransportKind(rawValue: rawValue) else {
+            return .network
+        }
+
+        return transportKind
+    }
+
     static func loadShowMenuBarIcon(from userDefaults: UserDefaults = .standard) -> Bool {
         guard userDefaults.object(forKey: AppSettingsKey.showMenuBarIcon) != nil else {
             return true

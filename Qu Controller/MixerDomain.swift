@@ -192,6 +192,33 @@ struct MixerEndpoint: Equatable {
     var port: Int = 51_325
 }
 
+enum MixerTransportKind: String, CaseIterable, Codable, Identifiable {
+    case network
+    case usbMIDI
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .network:
+            "TCP"
+        case .usbMIDI:
+            "USB MIDI"
+        }
+    }
+}
+
+struct MixerConnectionOption: Equatable, Identifiable {
+    let id: String
+    let displayName: String
+    let detail: String?
+}
+
+enum MixerConnectionTarget: Equatable {
+    case network(MixerEndpoint)
+    case usbMIDI(optionID: String?)
+}
+
 enum MixerConnectionPhase: Equatable {
     case disconnected
     case connecting

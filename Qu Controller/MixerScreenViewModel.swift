@@ -1,8 +1,3 @@
-//
-//  MixerScreenViewModel.swift
-//  Qu Controller
-//
-
 import Combine
 import Foundation
 
@@ -26,6 +21,8 @@ final class MixerScreenViewModel: ObservableObject {
     @Published private(set) var startHiddenInMenuBar: Bool
     @Published private(set) var showMenuBarIcon: Bool
     @Published private(set) var showSignalIndicators: Bool
+    @Published private(set) var connectionOptions: [MixerConnectionOption]
+    @Published private(set) var selectedUSBMIDIDeviceID: String?
 
     private let controller: MixerController
     private let defaultHost: String
@@ -52,6 +49,8 @@ final class MixerScreenViewModel: ObservableObject {
         showMenuBarIcon = AppSettings.loadShowMenuBarIcon(from: userDefaults)
         startHiddenInMenuBar = Self.loadStartHiddenInMenuBar(from: userDefaults)
         showSignalIndicators = Self.loadShowSignalIndicators(from: userDefaults)
+        connectionOptions = controller.connectionOptions
+        selectedUSBMIDIDeviceID = Self.loadSelectedUSBMIDIDeviceID(from: userDefaults)
 
         controller.channelsPublisher
             .receive(on: DispatchQueue.main)
@@ -60,6 +59,13 @@ final class MixerScreenViewModel: ObservableObject {
         controller.connectionStatePublisher
             .receive(on: DispatchQueue.main)
             .assign(to: &$connectionState)
+
+        controller.connectionOptionsPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] options in
+                self?.handleConnectionOptionsChange(options)
+            }
+            .store(in: &cancellables)
 
         controller.connectionStatePublisher
             .receive(on: DispatchQueue.main)
@@ -76,8 +82,13 @@ final class MixerScreenViewModel: ObservableObject {
             .store(in: &cancellables)
 
         updateSignalMonitoringState(for: connectionState)
-
+        handleConnectionOptionsChange(connectionOptions)
+        controller.refreshConnectionOptions()
         startInitialConnectionFlowIfNeeded()
+    }
+
+    var transportKind: MixerTransportKind {
+        controller.transportKind
     }
 
     var visibleMainScreenChannels: [MixerChannelState] {
@@ -125,8 +136,16 @@ final class MixerScreenViewModel: ObservableObject {
         connectionState.phase == .connected
     }
 
+    var selectedUSBMIDIDeviceName: String {
+        connectionOptions.first(where: { $0.id == selectedUSBMIDIDeviceID })?.displayName ?? "No device selected"
+    }
+
     var statusMessage: String {
-        switch discoveryState {
+        guard transportKind == .network else {
+            return connectionState.message
+        }
+
+        return switch discoveryState {
         case .scanning where connectionState.phase == .disconnected:
             "Scanning local network for a Qu mixer..."
         case .found(let discoveredHost) where connectionState.phase == .disconnected:
@@ -143,7 +162,11 @@ final class MixerScreenViewModel: ObservableObject {
     }
 
     var isAutoScanAvailable: Bool {
-        controller is QuNetworkMixerController && connectionState.phase == .disconnected && !isScanningForMixer
+        transportKind == .network && connectionState.phase == .disconnected && !isScanningForMixer
+    }
+
+    var canRefreshUSBDevices: Bool {
+        transportKind == .usbMIDI && connectionState.phase != .connecting
     }
 
     var scanButtonTitle: String {
@@ -156,7 +179,7 @@ final class MixerScreenViewModel: ObservableObject {
             controller.disconnect()
         case .disconnected, .error:
             Task {
-                await controller.connect(to: MixerEndpoint(host: host))
+                await controller.connect(to: currentConnectionTarget())
             }
         }
     }
@@ -234,8 +257,17 @@ final class MixerScreenViewModel: ObservableObject {
         updateSignalMonitoringState(for: connectionState)
     }
 
+    func setSelectedUSBMIDIDeviceID(_ optionID: String) {
+        selectedUSBMIDIDeviceID = optionID
+        userDefaults.set(optionID, forKey: AppSettingsKey.selectedUSBMIDIDeviceID)
+    }
+
+    func refreshConnectionOptions() {
+        controller.refreshConnectionOptions()
+    }
+
     func scanForMixer() {
-        guard controller is QuNetworkMixerController, !isScanningForMixer else {
+        guard transportKind == .network, !isScanningForMixer else {
             return
         }
 
@@ -250,6 +282,15 @@ final class MixerScreenViewModel: ObservableObject {
         discoveryTask?.cancel()
         discoveryTask = nil
         discoveryState = .idle
+    }
+
+    private func currentConnectionTarget() -> MixerConnectionTarget {
+        switch transportKind {
+        case .network:
+            return .network(MixerEndpoint(host: host))
+        case .usbMIDI:
+            return .usbMIDI(optionID: selectedUSBMIDIDeviceID)
+        }
     }
 
     private func visibleChannels(for surface: MixerLayoutSurface) -> [MixerChannelState] {
@@ -286,6 +327,15 @@ final class MixerScreenViewModel: ObservableObject {
         return host
     }
 
+    private static func loadSelectedUSBMIDIDeviceID(from userDefaults: UserDefaults) -> String? {
+        guard let optionID = userDefaults.string(forKey: AppSettingsKey.selectedUSBMIDIDeviceID),
+              !optionID.isEmpty else {
+            return nil
+        }
+
+        return optionID
+    }
+
     private static func loadConfirmBeforeShutdown(from userDefaults: UserDefaults) -> Bool {
         guard userDefaults.object(forKey: AppSettingsKey.confirmBeforeShutdown) != nil else {
             return true
@@ -314,12 +364,31 @@ final class MixerScreenViewModel: ObservableObject {
         return userDefaults.bool(forKey: AppSettingsKey.showSignalIndicators)
     }
 
+    private func handleConnectionOptionsChange(_ options: [MixerConnectionOption]) {
+        connectionOptions = options
+
+        guard transportKind == .usbMIDI else {
+            return
+        }
+
+        if let selectedUSBMIDIDeviceID, options.contains(where: { $0.id == selectedUSBMIDIDeviceID }) {
+            return
+        }
+
+        if let firstOption = options.first {
+            setSelectedUSBMIDIDeviceID(firstOption.id)
+        } else {
+            selectedUSBMIDIDeviceID = nil
+            userDefaults.removeObject(forKey: AppSettingsKey.selectedUSBMIDIDeviceID)
+        }
+    }
+
     private func updateSignalMonitoringState(for state: MixerConnectionState) {
         controller.setSignalMonitoringEnabled(showSignalIndicators && state.phase == .connected)
     }
 
     private func startInitialConnectionFlowIfNeeded() {
-        guard controller is QuNetworkMixerController else {
+        guard transportKind == .network else {
             return
         }
 
@@ -339,7 +408,7 @@ final class MixerScreenViewModel: ObservableObject {
 
             let discovery = QuMixerDiscovery()
             if await discovery.isMixerReachable(at: lastSuccessfulHost) {
-                await self.controller.connect(to: MixerEndpoint(host: lastSuccessfulHost))
+                await self.controller.connect(to: .network(MixerEndpoint(host: lastSuccessfulHost)))
             } else {
                 self.launchAutoConnectHost = nil
                 self.startDiscovery()
@@ -359,6 +428,10 @@ final class MixerScreenViewModel: ObservableObject {
     }
 
     private func startDiscovery() {
+        guard transportKind == .network else {
+            return
+        }
+
         discoveryTask?.cancel()
         discoveryState = .scanning
 
@@ -373,7 +446,7 @@ final class MixerScreenViewModel: ObservableObject {
                 self.host = discoveredHost
                 if self.autoConnectAfterDiscovery {
                     self.discoveryState = .idle
-                    await self.controller.connect(to: MixerEndpoint(host: discoveredHost))
+                    await self.controller.connect(to: .network(MixerEndpoint(host: discoveredHost)))
                 } else {
                     self.discoveryState = .found(discoveredHost)
                 }
@@ -384,7 +457,9 @@ final class MixerScreenViewModel: ObservableObject {
     }
 
     private func handleConnectionStateChange(_ state: MixerConnectionState) {
-        startDiscoveryFallbackIfNeeded(for: state)
+        if transportKind == .network {
+            startDiscoveryFallbackIfNeeded(for: state)
+        }
 
         guard state.phase == .connected else {
             return
@@ -395,7 +470,8 @@ final class MixerScreenViewModel: ObservableObject {
         discoveryTask = nil
         discoveryState = .idle
 
-        guard let successfulHost = state.endpoint?.host,
+        guard transportKind == .network,
+              let successfulHost = state.endpoint?.host,
               !successfulHost.isEmpty else {
             return
         }

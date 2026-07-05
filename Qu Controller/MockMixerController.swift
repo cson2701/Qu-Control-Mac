@@ -8,6 +8,8 @@ import Foundation
 
 @MainActor
 final class MockMixerController: MixerController {
+    let transportKind: MixerTransportKind = .network
+
     @Published private var storedChannels: [MixerChannelState] = MixerChannelID.selectableChannels.enumerated().map { index, channelID in
         let normalized = min(0.18 + (Double(index) * 0.04), 0.88)
         let customName: String? = switch channelID {
@@ -41,6 +43,10 @@ final class MockMixerController: MixerController {
         storedConnectionState
     }
 
+    var connectionOptions: [MixerConnectionOption] {
+        []
+    }
+
     var channelsPublisher: AnyPublisher<[MixerChannelState], Never> {
         $storedChannels.eraseToAnyPublisher()
     }
@@ -49,7 +55,19 @@ final class MockMixerController: MixerController {
         $storedConnectionState.eraseToAnyPublisher()
     }
 
-    func connect(to endpoint: MixerEndpoint) async {
+    var connectionOptionsPublisher: AnyPublisher<[MixerConnectionOption], Never> {
+        Empty(completeImmediately: false).eraseToAnyPublisher()
+    }
+
+    func connect(to target: MixerConnectionTarget) async {
+        let endpoint: MixerEndpoint
+        switch target {
+        case .network(let resolvedEndpoint):
+            endpoint = resolvedEndpoint
+        case .usbMIDI:
+            endpoint = MixerEndpoint(host: "USB MIDI")
+        }
+
         storedConnectionState = MixerConnectionState(
             phase: .connecting,
             message: "Connecting to \(endpoint.host):\(endpoint.port)",
@@ -127,4 +145,6 @@ final class MockMixerController: MixerController {
             )
         }
     }
+
+    func refreshConnectionOptions() {}
 }
