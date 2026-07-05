@@ -11,6 +11,7 @@ struct VerticalFader: View {
     let isEnabled: Bool
     let showsSignalIndicator: Bool
     let onLevelChange: (FaderLevel) -> Void
+    let onMuteToggle: (Bool) -> Void
 
     private let minimumSliderHeight: CGFloat = 160
     private var levelLabel: String {
@@ -39,6 +40,15 @@ struct VerticalFader: View {
                 .minimumScaleFactor(0.85)
                 .fixedSize(horizontal: true, vertical: false)
                 .frame(width: 64)
+
+            MuteToggleButton(
+                isMuted: channel.isMuted,
+                label: "Mute"
+            ) {
+                onMuteToggle(!channel.isMuted)
+            }
+            .disabled(!isEnabled)
+            .frame(width: 64)
 
             NativeVerticalSlider(value: channel.level.normalized, isEnabled: isEnabled) { normalized in
                 onLevelChange(FaderLevel(normalized: normalized))

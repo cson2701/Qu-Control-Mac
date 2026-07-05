@@ -30,6 +30,11 @@ struct ContentView: View {
         } message: {
             Text("This will power off the connected Qu mixer. You will need a hard power reset to turn it back on.")
         }
+        .background(
+            WindowKeyPressHandler(key: "m", modifiers: []) {
+                viewModel.toggleMainLRMute()
+            }
+        )
     }
 
     private var connectedContent: some View {
@@ -81,6 +86,8 @@ struct ContentView: View {
                                         showsSignalIndicator: viewModel.showSignalIndicators
                                     ) { level in
                                         viewModel.setLevel(level, for: channel.id)
+                                    } onMuteToggle: { isMuted in
+                                        viewModel.setMute(isMuted, for: channel.id)
                                     }
                                     .frame(width: faderWidth)
                                     .frame(maxHeight: .infinity)

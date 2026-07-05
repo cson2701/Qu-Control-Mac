@@ -98,6 +98,7 @@ final class MixerScreenViewModel: ObservableObject {
                 MixerChannelState(
                     id: channel.id,
                     level: FaderLevel(normalized: 0),
+                    isMuted: false,
                     hasSignal: false,
                     customName: channel.customName
                 )
@@ -162,6 +163,19 @@ final class MixerScreenViewModel: ObservableObject {
 
     func setLevel(_ level: FaderLevel, for channelID: MixerChannelID) {
         controller.setLevel(for: channelID, level: level)
+    }
+
+    func setMute(_ isMuted: Bool, for channelID: MixerChannelID) {
+        controller.setMute(for: channelID, isMuted: isMuted)
+    }
+
+    func toggleMainLRMute() {
+        guard let mainLRChannel = channels.first(where: { $0.id == .mainLr }),
+              connectionState.phase == .connected else {
+            return
+        }
+
+        controller.setMute(for: .mainLr, isMuted: !mainLRChannel.isMuted)
     }
 
     func isChannelVisible(_ channelID: MixerChannelID, on surface: MixerLayoutSurface) -> Bool {
@@ -289,11 +303,7 @@ final class MixerScreenViewModel: ObservableObject {
     }
 
     private static func loadStartHiddenInMenuBar(from userDefaults: UserDefaults) -> Bool {
-        guard userDefaults.object(forKey: AppSettingsKey.startHiddenInMenuBar) != nil else {
-            return false
-        }
-
-        return userDefaults.bool(forKey: AppSettingsKey.startHiddenInMenuBar)
+        AppSettings.loadStartHiddenInMenuBar(from: userDefaults)
     }
 
     private static func loadShowSignalIndicators(from userDefaults: UserDefaults) -> Bool {

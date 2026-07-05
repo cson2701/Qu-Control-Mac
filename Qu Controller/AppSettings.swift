@@ -19,6 +19,14 @@ enum AppSettings {
 
         return userDefaults.bool(forKey: AppSettingsKey.showMenuBarIcon)
     }
+
+    static func loadStartHiddenInMenuBar(from userDefaults: UserDefaults = .standard) -> Bool {
+        guard userDefaults.object(forKey: AppSettingsKey.startHiddenInMenuBar) != nil else {
+            return false
+        }
+
+        return userDefaults.bool(forKey: AppSettingsKey.startHiddenInMenuBar)
+    }
 }
 
 enum LoginItemSettings {
