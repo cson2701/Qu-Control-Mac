@@ -16,5 +16,6 @@ protocol MixerController: AnyObject {
     func disconnect()
     func shutdownMixer() async
     func setLevel(for channelID: MixerChannelID, level: FaderLevel)
+    func setMute(for channelID: MixerChannelID, isMuted: Bool)
     func setSignalMonitoringEnabled(_ isEnabled: Bool)
 }

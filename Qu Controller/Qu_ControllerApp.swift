@@ -19,18 +19,24 @@ struct Qu_ControllerApp: App {
 
     init() {
         let initialControllerMode = MixerControllerFactory.currentControllerMode()
+        let showsMenuBarIcon = AppSettings.loadShowMenuBarIcon()
+        let startsHiddenInMenuBar = AppSettings.loadStartHiddenInMenuBar()
         let menuBarImage = NSImage(named: "MenuBarIcon") ?? NSImage()
         menuBarImage.isTemplate = true
         menuBarImage.size = NSSize(width: 18, height: 18)
 
         _controllerMode = State(initialValue: initialControllerMode)
-        _showMenuBarIcon = State(initialValue: AppSettings.loadShowMenuBarIcon())
+        _showMenuBarIcon = State(initialValue: showsMenuBarIcon)
         _viewModel = State(
             initialValue: MixerScreenViewModel(
                 controller: MixerControllerFactory.makeMixerController(mode: initialControllerMode)
             )
         )
         menuBarStatusItemController = MenuBarStatusItemController(image: menuBarImage)
+
+        if showsMenuBarIcon && startsHiddenInMenuBar {
+            NSApplication.shared.setActivationPolicy(.accessory)
+        }
     }
 
     var body: some Scene {
@@ -42,6 +48,11 @@ struct Qu_ControllerApp: App {
                 isUsingMockConnection: controllerMode.usesMockConnection,
                 onSetUseMockConnection: updateMockConnectionUsage(_:)
             )
+                .background(
+                    OpenMainWindowRegistrar { reopen in
+                        appVisibilityController.reopenMainWindow = reopen
+                    }
+                )
                 .background(
                     MainWindowObserver { window in
                         appVisibilityController.attachMainWindow(window)
@@ -57,6 +68,11 @@ struct Qu_ControllerApp: App {
             )
         }
         .windowResizability(.contentSize)
+        .commands {
+            AppSettingsCommands {
+                menuBarStatusItemController.closePopover()
+            }
+        }
     }
 
     private var shouldSuppressMainWindowOnLaunch: Bool {
@@ -103,13 +119,40 @@ struct Qu_ControllerApp: App {
                 MenuBarMixerView(
                     viewModel: viewModel,
                     showMainWindow: {
+                        menuBarStatusItemController.closePopover()
                         appVisibilityController.showMainWindow()
                     },
-                    showSettings: {
-                        appVisibilityController.showSettingsWindow()
+                    closePopover: {
+                        menuBarStatusItemController.closePopover()
+                    },
+                    registerOpenMainWindow: { reopen in
+                        appVisibilityController.reopenMainWindow = reopen
                     }
                 )
             )
         )
+    }
+}
+
+private struct AppSettingsCommands: Commands {
+    let prepareToOpenSettings: () -> Void
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some Commands {
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") {
+                prepareToOpenSettings()
+                openSettings()
+
+                DispatchQueue.main.async {
+                    for window in NSApp.windows where window.identifier?.rawValue == "com.apple.SwiftUI.Settings" {
+                        window.makeKeyAndOrderFront(nil)
+                        window.orderFrontRegardless()
+                    }
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+            }
+            .keyboardShortcut(",", modifiers: .command)
+        }
     }
 }

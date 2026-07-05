@@ -109,6 +109,7 @@ final class QuNetworkMixerController: MixerController {
             return MixerChannelState(
                 id: channel.id,
                 level: level,
+                isMuted: channel.isMuted,
                 hasSignal: channel.hasSignal,
                 customName: channel.customName
             )
@@ -126,6 +127,42 @@ final class QuNetworkMixerController: MixerController {
                     parameterID: 0x17,
                     value: UInt8(level.toMIDIValue()),
                     index: 0x07
+                )
+            } catch {
+                await handleConnectionFailure(
+                    error,
+                    endpoint: storedConnectionState.endpoint,
+                    prefix: "Send failed"
+                )
+            }
+        }
+    }
+
+    func setMute(for channelID: MixerChannelID, isMuted: Bool) {
+        storedChannels = storedChannels.map { channel in
+            guard channel.id == channelID else {
+                return channel
+            }
+
+            return MixerChannelState(
+                id: channel.id,
+                level: channel.level,
+                isMuted: isMuted,
+                hasSignal: channel.hasSignal,
+                customName: channel.customName
+            )
+        }
+
+        guard let midiChannel else {
+            return
+        }
+
+        Task {
+            do {
+                try await sendMute(
+                    midiChannel: midiChannel,
+                    targetChannel: channelID.midiChannelCode,
+                    isMuted: isMuted
                 )
             } catch {
                 await handleConnectionFailure(
@@ -257,6 +294,15 @@ final class QuNetworkMixerController: MixerController {
                 let value = byteBuffer[2]
                 byteBuffer.removeFirst(3)
                 handleControlChange(status: status, controller: controller, value: value)
+            case 0x80 ... 0x9F:
+                guard byteBuffer.count >= 3 else {
+                    return
+                }
+                let status = byteBuffer[0]
+                let note = byteBuffer[1]
+                let velocity = byteBuffer[2]
+                byteBuffer.removeFirst(3)
+                handleNoteMessage(status: status, note: note, velocity: velocity)
             default:
                 byteBuffer.removeFirst()
             }
@@ -328,6 +374,14 @@ final class QuNetworkMixerController: MixerController {
         ])
     }
 
+    private func sendMute(midiChannel: UInt8, targetChannel: UInt8, isMuted: Bool) async throws {
+        let status = 0x90 | midiChannel
+        try await sendBytes([
+            status, targetChannel, isMuted ? 0x7F : 0x3F,
+            status, targetChannel, 0x00
+        ])
+    }
+
     private func sendRemoteShutdown(midiChannel: UInt8) async throws {
         let status = 0xB0 | midiChannel
         try await sendBytes([
@@ -392,6 +446,7 @@ final class QuNetworkMixerController: MixerController {
                 return MixerChannelState(
                     id: channel.id,
                     level: channel.level,
+                    isMuted: channel.isMuted,
                     hasSignal: channel.hasSignal,
                     customName: decodedName
                 )
@@ -470,6 +525,7 @@ final class QuNetworkMixerController: MixerController {
                     return MixerChannelState(
                         id: channel.id,
                         level: level,
+                        isMuted: channel.isMuted,
                         hasSignal: channel.hasSignal,
                         customName: channel.customName
                     )
@@ -478,6 +534,36 @@ final class QuNetworkMixerController: MixerController {
             nrpnState.clear()
         default:
             break
+        }
+    }
+
+    private func handleNoteMessage(status: UInt8, note: UInt8, velocity: UInt8) {
+        let statusType = status & 0xF0
+        let statusChannel = status & 0x0F
+
+        guard let midiChannel, statusChannel == midiChannel else {
+            return
+        }
+
+        guard statusType == 0x90,
+              velocity > 0,
+              let channelID = MixerChannelID(midiChannelCode: note) else {
+            return
+        }
+
+        let isMuted = velocity >= 0x40
+        storedChannels = storedChannels.map { channel in
+            guard channel.id == channelID else {
+                return channel
+            }
+
+            return MixerChannelState(
+                id: channel.id,
+                level: channel.level,
+                isMuted: isMuted,
+                hasSignal: channel.hasSignal,
+                customName: channel.customName
+            )
         }
     }
 
@@ -548,6 +634,7 @@ final class QuNetworkMixerController: MixerController {
             MixerChannelState(
                 id: channel.id,
                 level: channel.level,
+                isMuted: channel.isMuted,
                 hasSignal: signalStates[channel.id] ?? false,
                 customName: channel.customName
             )
@@ -562,6 +649,7 @@ final class QuNetworkMixerController: MixerController {
             MixerChannelState(
                 id: channel.id,
                 level: channel.level,
+                isMuted: channel.isMuted,
                 hasSignal: false,
                 customName: channel.customName
             )
@@ -588,6 +676,7 @@ final class QuNetworkMixerController: MixerController {
             MixerChannelState(
                 id: channel.id,
                 level: channel.level,
+                isMuted: false,
                 hasSignal: false,
                 customName: channel.customName
             )
@@ -635,6 +724,7 @@ final class QuNetworkMixerController: MixerController {
             MixerChannelState(
                 id: channelID,
                 level: FaderLevel(normalized: channelID == .mainLr ? 0.72 : 0),
+                isMuted: false,
                 hasSignal: false,
                 customName: nil
             )

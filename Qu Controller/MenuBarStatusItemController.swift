@@ -31,6 +31,14 @@ final class MenuBarStatusItemController {
         }
     }
 
+    func closePopover() {
+        guard popover.isShown else {
+            return
+        }
+
+        popover.performClose(nil)
+    }
+
     @objc private func togglePopover(_ sender: AnyObject?) {
         guard let button = statusItem?.button else {
             return
@@ -60,9 +68,7 @@ final class MenuBarStatusItemController {
     }
 
     private func removeStatusItem() {
-        if popover.isShown {
-            popover.performClose(nil)
-        }
+        closePopover()
 
         if let statusItem {
             statusBar.removeStatusItem(statusItem)

@@ -22,6 +22,7 @@ final class MockMixerController: MixerController {
         return MixerChannelState(
             id: channelID,
             level: FaderLevel(normalized: normalized),
+            isMuted: false,
             hasSignal: channelID == .ch1 || channelID == .ch2 || channelID == .mainLr,
             customName: customName
         )
@@ -88,6 +89,23 @@ final class MockMixerController: MixerController {
             return MixerChannelState(
                 id: channel.id,
                 level: level,
+                isMuted: channel.isMuted,
+                hasSignal: channel.hasSignal,
+                customName: channel.customName
+            )
+        }
+    }
+
+    func setMute(for channelID: MixerChannelID, isMuted: Bool) {
+        storedChannels = storedChannels.map { channel in
+            guard channel.id == channelID else {
+                return channel
+            }
+
+            return MixerChannelState(
+                id: channel.id,
+                level: channel.level,
+                isMuted: isMuted,
                 hasSignal: channel.hasSignal,
                 customName: channel.customName
             )
@@ -103,6 +121,7 @@ final class MockMixerController: MixerController {
             MixerChannelState(
                 id: channel.id,
                 level: channel.level,
+                isMuted: channel.isMuted,
                 hasSignal: false,
                 customName: channel.customName
             )

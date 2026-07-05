@@ -3,12 +3,15 @@
 //  Qu Controller
 //
 
+import AppKit
 import SwiftUI
 
 struct MenuBarMixerView: View {
     @ObservedObject var viewModel: MixerScreenViewModel
     let showMainWindow: () -> Void
-    let showSettings: () -> Void
+    let closePopover: () -> Void
+    let registerOpenMainWindow: (@escaping () -> Void) -> Void
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -30,13 +33,21 @@ struct MenuBarMixerView: View {
                     }
 
                     Button("Settings") {
-                        showSettings()
+                        closePopover()
+                        openSettings()
                     }
 
                     Divider()
 
                     Button(viewModel.buttonTitle) {
                         viewModel.toggleConnection()
+                    }
+
+                    Divider()
+
+                    Button("Quit") {
+                        closePopover()
+                        NSApp.terminate(nil)
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -56,6 +67,8 @@ struct MenuBarMixerView: View {
                                 showsSignalIndicator: viewModel.showSignalIndicators
                             ) { level in
                                 viewModel.setLevel(level, for: channel.id)
+                            } onMuteToggle: { isMuted in
+                                viewModel.setMute(isMuted, for: channel.id)
                             }
                         }
                     }
@@ -76,6 +89,16 @@ struct MenuBarMixerView: View {
         }
         .padding(16)
         .frame(width: 320, alignment: .topLeading)
+        .background(
+            OpenMainWindowRegistrar { reopen in
+                registerOpenMainWindow(reopen)
+            }
+        )
+        .background(
+            WindowKeyPressHandler(key: "m", modifiers: []) {
+                viewModel.toggleMainLRMute()
+            }
+        )
     }
 }
 
@@ -84,6 +107,7 @@ private struct HorizontalFaderRow: View {
     let isEnabled: Bool
     let showsSignalIndicator: Bool
     let onLevelChange: (FaderLevel) -> Void
+    let onMuteToggle: (Bool) -> Void
 
     private var levelLabel: String {
         isEnabled ? "\(channel.level.percentage)%" : "--"
@@ -118,6 +142,14 @@ private struct HorizontalFaderRow: View {
                     .monospacedDigit()
                     .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
                     .frame(width: 48, alignment: .trailing)
+
+                MuteToggleButton(
+                    isMuted: channel.isMuted,
+                    label: "Mute"
+                ) {
+                    onMuteToggle(!channel.isMuted)
+                }
+                .disabled(!isEnabled)
             }
 
             Slider(value: levelBinding, in: 0 ... 1)

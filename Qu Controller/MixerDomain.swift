@@ -116,6 +116,7 @@ enum MixerChannelID: String, CaseIterable, Identifiable, Codable {
 struct MixerChannelState: Equatable, Identifiable {
     let id: MixerChannelID
     var level: FaderLevel
+    var isMuted: Bool
     var hasSignal: Bool
     var customName: String?
 

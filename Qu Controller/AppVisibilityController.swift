@@ -13,6 +13,7 @@ enum AppWindowID {
 @MainActor
 final class AppVisibilityController: NSObject, NSApplicationDelegate {
     weak var mainWindow: NSWindow?
+    var reopenMainWindow: (() -> Void)?
 
     private var observedWindow: NSWindow?
 
@@ -52,6 +53,8 @@ final class AppVisibilityController: NSObject, NSApplicationDelegate {
         if let mainWindow {
             mainWindow.makeKeyAndOrderFront(nil)
             mainWindow.orderFrontRegardless()
+        } else {
+            reopenMainWindow?()
         }
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -103,5 +106,20 @@ struct MainWindowObserver: NSViewRepresentable {
         DispatchQueue.main.async {
             onWindowChange(nsView.window)
         }
+    }
+}
+
+struct OpenMainWindowRegistrar: View {
+    let onRegister: (@escaping () -> Void) -> Void
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .onAppear {
+                onRegister {
+                    openWindow(id: AppWindowID.main)
+                }
+            }
     }
 }
