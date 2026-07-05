@@ -36,7 +36,7 @@ These are the first delivery tasks for this project:
 | Done | [#17](https://github.com/cson2701/Qu-Control-Mac/issues/17) | Add settings items | Add local task tracking for the settings items issue |
 | Done | [#18](https://github.com/cson2701/Qu-Control-Mac/issues/18) | Add a debug-only mock connection toggle | Add a debug-only mock toggle and stop discovery immediately when mock mode is enabled |
 | Done | [#20](https://github.com/cson2701/Qu-Control-Mac/issues/20) | Add more connection and app behavior settings | Follow-on settings ideas beyond the initial settings window |
-| Todo | [#22](https://github.com/cson2701/Qu-Control-Mac/issues/22) | Add per-channel mute controls | Add mute state and toggle controls for visible mixer channels |
+| Done | [#22](https://github.com/cson2701/Qu-Control-Mac/issues/22) | Add per-channel mute controls | Add mute state and toggle controls for visible mixer channels |
 | Done | [#23](https://github.com/cson2701/Qu-Control-Mac/issues/23) | Add live channel metering | Implemented lightweight per-channel signal indicators instead of full meters, with a settings toggle that disables monitoring when off |
 | Todo | [#26](https://github.com/cson2701/Qu-Control-Mac/issues/26) | Add USB MIDI support alongside TCP | Add USB MIDI as an alternative mixer transport |
 | Done | [#25](https://github.com/cson2701/Qu-Control-Mac/issues/25) | Menu bar icon won't show when turning on the switch in settings | Menu bar icon only appears on app launch when the setting was already enabled |
