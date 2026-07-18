@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct SettingsView: View {
@@ -12,17 +13,18 @@ struct SettingsView: View {
     @ObservedObject var viewModel: MixerScreenViewModel
     let onSetShowMenuBarIcon: (Bool) -> Void
     @State private var selectedTab: Tab = .connection
+    @State private var isShowingRelayPortResetConfirmation = false
 
     private var windowSize: CGSize {
         switch selectedTab {
         case .connection:
-            CGSize(width: 540, height: 250)
+            CGSize(width: 500, height: 240)
         case .relay:
-            CGSize(width: 560, height: 400)
+            CGSize(width: 500, height: 520)
         case .appBehavior:
-            CGSize(width: 540, height: 410)
+            CGSize(width: 500, height: 580)
         case .mainWindow, .menuBar:
-            CGSize(width: 520, height: 500)
+            CGSize(width: 500, height: 600)
         }
     }
 
@@ -30,17 +32,17 @@ struct SettingsView: View {
         TabView(selection: $selectedTab) {
             SettingsPane(title: "Connection", subtitle: "Connection and discovery behavior.") {
                 Form {
-                    Toggle(
-                        "Automatically connect after mixer is found",
-                        isOn: Binding(
-                            get: { viewModel.autoConnectAfterDiscovery },
-                            set: viewModel.setAutoConnectAfterDiscovery(_:)
+                    Section {
+                        Toggle(
+                            "Automatically connect after mixer is found",
+                            isOn: Binding(
+                                get: { viewModel.autoConnectAfterDiscovery },
+                                set: viewModel.setAutoConnectAfterDiscovery(_:)
+                            )
                         )
-                    )
-
-                    Text("Discovery tries the last successfully connected IP first, then falls back to subnet scanning.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    } footer: {
+                        Text("Discovery tries the last successfully connected IP first, then falls back to subnet scanning.")
+                    }
                 }
                 .formStyle(.grouped)
             }
@@ -70,7 +72,7 @@ struct SettingsView: View {
                         .disabled(!viewModel.relayEnabled)
                     }
 
-                    Section("Listener") {
+                    Section {
                         LabeledContent("Port") {
                             TextField(
                                 "",
@@ -83,19 +85,80 @@ struct SettingsView: View {
                             .accessibilityLabel("Relay port")
                             .frame(width: 100)
                         }
+                    } header: {
+                        Text("Listener")
+                    } footer: {
+                        if viewModel.relayPort != MixerScreenViewModel.defaultRelayPort {
+                            HStack {
+                                Spacer()
+
+                                Button("Reset to Default") {
+                                    isShowingRelayPortResetConfirmation = true
+                                }
+                                .foregroundStyle(.red)
+                            }
+                        }
                     }
                     .disabled(viewModel.relayEnabled)
-
-                    Section("Status") {
-                        Text(viewModel.relayStatusMessage)
-
-                        Text("Connected clients: \(viewModel.relayConnectedClientCount)")
-                            .foregroundStyle(.secondary)
+                    .alert("Reset Relay Port?", isPresented: $isShowingRelayPortResetConfirmation) {
+                        Button("Cancel", role: .cancel) {}
+                        Button("Reset", role: .destructive) {
+                            viewModel.resetRelayPort()
+                        }
+                    } message: {
+                        Text(
+                            "This will reset the relay port to \(MixerScreenViewModel.defaultRelayPort). "
+                                + "Update the port setting on other devices that connect to this relay."
+                        )
                     }
 
-                    Text("The relay accepts connections on all network interfaces and uses newline-delimited JSON without authentication or encryption.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Section {
+                        LabeledContent("Relay status", value: viewModel.relayStatusMessage)
+
+                        LabeledContent(
+                            "Connected clients",
+                            value: String(viewModel.relayConnectedClientCount)
+                        )
+
+                        if viewModel.relayNetworkAddresses.isEmpty {
+                            LabeledContent("Wi-Fi", value: "Unavailable")
+                        } else {
+                            ForEach(viewModel.relayNetworkAddresses) { address in
+                                let host = address.host
+
+                                LabeledContent(address.interfaceLabel) {
+                                    HStack(spacing: 8) {
+                                        Text(host)
+                                            .monospaced()
+                                            .textSelection(.enabled)
+
+                                        Button {
+                                            copyToPasteboard(host)
+                                        } label: {
+                                            Image(systemName: "doc.on.doc")
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .help("Copy relay endpoint")
+                                        .accessibilityLabel("Copy \(address.interfaceLabel) relay endpoint")
+                                    }
+                                }
+                            }
+                        }
+                    } header: {
+                        Text("Status")
+                    } footer: {
+                        VStack(alignment: .leading, spacing: 6) {
+                            if !viewModel.relayNetworkAddresses.isEmpty {
+                                Text(
+                                    viewModel.relayNetworkAddresses.count == 1
+                                        ? "Use this Mac's LAN address on the client device."
+                                        : "Use one of this Mac's LAN addresses on the client device."
+                                )
+                            }
+
+                            Text("The relay accepts connections on all network interfaces and uses newline-delimited JSON without authentication or encryption.")
+                        }
+                    }
                 }
                 .formStyle(.grouped)
             }
@@ -116,7 +179,7 @@ struct SettingsView: View {
                         )
                     }
 
-                    Section("Menu Bar") {
+                    Section {
                         Toggle(
                             "Show menu bar icon",
                             isOn: Binding(
@@ -134,13 +197,13 @@ struct SettingsView: View {
                                 )
                             )
                         }
-
+                    } header: {
+                        Text("Menu Bar")
+                    } footer: {
                         Text("When the menu bar icon is hidden, Qu Controller stays available from the main app window and Settings.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
 
-                    Section("Signal Indicators") {
+                    Section {
                         Toggle(
                             "Show signal indicators",
                             isOn: Binding(
@@ -148,10 +211,10 @@ struct SettingsView: View {
                                 set: viewModel.setShowSignalIndicators(_:)
                             )
                         )
-
+                    } header: {
+                        Text("Signal Indicators")
+                    } footer: {
                         Text("Show green dots when channels are active.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
 
                     Section("Safety") {
@@ -188,6 +251,11 @@ struct SettingsView: View {
             }
         }
         .frame(width: windowSize.width, height: windowSize.height)
+    }
+
+    private func copyToPasteboard(_ value: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
     }
 }
 
