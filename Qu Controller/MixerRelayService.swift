@@ -18,6 +18,7 @@ final class MixerRelayService: ObservableObject {
 
     @Published private(set) var status = Status(phase: .disabled, message: "Relay disabled")
     @Published private(set) var connectedClientCount = 0
+    @Published private(set) var networkAddresses: [RelayNetworkAddress] = []
 
     private struct Client {
         let connection: NWConnection
@@ -26,6 +27,7 @@ final class MixerRelayService: ObservableObject {
 
     private let controller: MixerController
     private let networkQueue = DispatchQueue(label: "com.scrapps.qucontroller.relay")
+    private let pathMonitor = NWPathMonitor()
     private let maximumBufferedBytes = 64 * 1024
     private var listener: NWListener?
     private var clients: [UUID: Client] = [:]
@@ -49,6 +51,21 @@ final class MixerRelayService: ObservableObject {
                 self?.broadcastSnapshot()
             }
             .store(in: &cancellables)
+
+        pathMonitor.pathUpdateHandler = { [weak self] path in
+            var interfaceLabels: [String: String] = [:]
+            for interface in path.availableInterfaces {
+                guard let label = Self.label(for: interface.type) else { continue }
+                interfaceLabels[interface.name] = label
+            }
+
+            Task { @MainActor [weak self, interfaceLabels] in
+                self?.networkAddresses = RelayNetworkAddressProvider.currentIPv4Addresses(
+                    interfaceLabels: interfaceLabels
+                )
+            }
+        }
+        pathMonitor.start(queue: networkQueue)
     }
 
     func configure(isEnabled: Bool, port: Int) {
@@ -275,5 +292,16 @@ final class MixerRelayService: ObservableObject {
         client.connection.stateUpdateHandler = nil
         client.connection.cancel()
         connectedClientCount = clients.count
+    }
+
+    nonisolated private static func label(for interfaceType: NWInterface.InterfaceType) -> String? {
+        switch interfaceType {
+        case .wifi:
+            "Wi-Fi"
+        case .wiredEthernet:
+            "Ethernet"
+        default:
+            nil
+        }
     }
 }

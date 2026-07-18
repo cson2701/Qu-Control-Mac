@@ -8,6 +8,8 @@ import Foundation
 
 @MainActor
 final class MixerScreenViewModel: ObservableObject {
+    static let defaultRelayPort = 51_326
+
     enum DiscoveryState: Equatable {
         case idle
         case scanning
@@ -31,6 +33,7 @@ final class MixerScreenViewModel: ObservableObject {
     @Published private(set) var relayPort: Int
     @Published private(set) var relayStatusMessage: String
     @Published private(set) var relayConnectedClientCount: Int
+    @Published private(set) var relayNetworkAddresses: [RelayNetworkAddress]
 
     private let controller: MixerController
     private let relayService: MixerRelayService
@@ -68,6 +71,7 @@ final class MixerScreenViewModel: ObservableObject {
         self.relayService = relayService
         relayStatusMessage = relayService.status.message
         relayConnectedClientCount = relayService.connectedClientCount
+        relayNetworkAddresses = relayService.networkAddresses
 
         controller.channelsPublisher
             .receive(on: DispatchQueue.main)
@@ -99,6 +103,10 @@ final class MixerScreenViewModel: ObservableObject {
         relayService.$connectedClientCount
             .receive(on: DispatchQueue.main)
             .assign(to: &$relayConnectedClientCount)
+
+        relayService.$networkAddresses
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$relayNetworkAddresses)
 
         updateSignalMonitoringState(for: connectionState)
         configureRelay()
@@ -278,6 +286,10 @@ final class MixerScreenViewModel: ObservableObject {
         configureRelay()
     }
 
+    func resetRelayPort() {
+        setRelayPort(Self.defaultRelayPort)
+    }
+
     func scanForMixer() {
         guard controller is QuNetworkMixerController, !isScanningForMixer else {
             return
@@ -368,7 +380,7 @@ final class MixerScreenViewModel: ObservableObject {
 
     private static func loadRelayPort(from userDefaults: UserDefaults) -> Int {
         let storedPort = userDefaults.integer(forKey: AppSettingsKey.relayPort)
-        return (1 ... 65_535).contains(storedPort) ? storedPort : 51_326
+        return (1 ... 65_535).contains(storedPort) ? storedPort : defaultRelayPort
     }
 
     private func configureRelay() {
