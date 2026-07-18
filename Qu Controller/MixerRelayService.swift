@@ -35,6 +35,7 @@ final class MixerRelayService: ObservableObject {
         self.controller = controller
 
         controller.channelsPublisher
+            .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.broadcastSnapshot()
@@ -42,6 +43,7 @@ final class MixerRelayService: ObservableObject {
             .store(in: &cancellables)
 
         controller.connectionStatePublisher
+            .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.broadcastSnapshot()
