@@ -40,7 +40,7 @@ These are the first delivery tasks for this project:
 | Done | [#23](https://github.com/cson2701/Qu-Control-Mac/issues/23) | Add live channel metering | Implemented lightweight per-channel signal indicators instead of full meters, with a settings toggle that disables monitoring when off |
 | Todo | [#26](https://github.com/cson2701/Qu-Control-Mac/issues/26) | Add USB MIDI support alongside TCP | Add USB MIDI as an alternative mixer transport |
 | Done | [#25](https://github.com/cson2701/Qu-Control-Mac/issues/25) | Menu bar icon won't show when turning on the switch in settings | Menu bar icon only appears on app launch when the setting was already enabled |
-| In-progress | [#31](https://github.com/cson2701/Qu-Control-Mac/issues/31) | Add relay mode that proxies a single mixer connection to remote clients | Add Mac-hosted relay mode for remote clients |
+| Done | [#31](https://github.com/cson2701/Qu-Control-Mac/issues/31) | Add relay mode that proxies a single mixer connection to remote clients | Add Mac-hosted relay mode for remote clients |
 
 ## Suggested Execution Order
 
