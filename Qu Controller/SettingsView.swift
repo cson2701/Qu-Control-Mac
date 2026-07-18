@@ -5,7 +5,6 @@ struct SettingsView: View {
         case connection
         case relay
         case appBehavior
-        case safety
         case mainWindow
         case menuBar
     }
@@ -19,11 +18,9 @@ struct SettingsView: View {
         case .connection:
             CGSize(width: 540, height: 250)
         case .relay:
-            CGSize(width: 560, height: 360)
+            CGSize(width: 560, height: 400)
         case .appBehavior:
-            CGSize(width: 540, height: 330)
-        case .safety:
-            CGSize(width: 520, height: 220)
+            CGSize(width: 540, height: 410)
         case .mainWindow, .menuBar:
             CGSize(width: 520, height: 500)
         }
@@ -65,30 +62,20 @@ struct SettingsView: View {
                     }
 
                     Section("Listener") {
-                        LabeledContent("Bind host") {
-                            TextField(
-                                "0.0.0.0",
-                                text: Binding(
-                                    get: { viewModel.relayBindHost },
-                                    set: viewModel.setRelayBindHost(_:)
-                                )
-                            )
-                            .frame(width: 180)
-                        }
-
                         LabeledContent("Port") {
                             TextField(
-                                "Port",
+                                "",
                                 value: Binding(
                                     get: { viewModel.relayPort },
                                     set: viewModel.setRelayPort(_:)
                                 ),
                                 format: .number.grouping(.never)
                             )
+                            .accessibilityLabel("Relay port")
                             .frame(width: 100)
                         }
                     }
-                    .disabled(!viewModel.relayEnabled)
+                    .disabled(viewModel.relayEnabled)
 
                     Section("Status") {
                         Text(viewModel.relayStatusMessage)
@@ -97,7 +84,7 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    Text("Use 0.0.0.0 to accept connections on all interfaces. The relay uses newline-delimited JSON without authentication or encryption.")
+                    Text("The relay accepts connections on all network interfaces and uses newline-delimited JSON without authentication or encryption.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -157,29 +144,22 @@ struct SettingsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+
+                    Section("Safety") {
+                        Toggle(
+                            "Confirm before shutting down",
+                            isOn: Binding(
+                                get: { viewModel.confirmBeforeShutdown },
+                                set: viewModel.setConfirmBeforeShutdown(_:)
+                            )
+                        )
+                    }
                 }
                 .formStyle(.grouped)
             }
             .tag(Tab.appBehavior)
             .tabItem {
                 Label("App", systemImage: "app.badge")
-            }
-
-            SettingsPane(title: "Safety", subtitle: "Actions that affect live mixer behavior.") {
-                Form {
-                    Toggle(
-                        "Confirm before shutting down",
-                        isOn: Binding(
-                            get: { viewModel.confirmBeforeShutdown },
-                            set: viewModel.setConfirmBeforeShutdown(_:)
-                        )
-                    )
-                }
-                .formStyle(.grouped)
-            }
-            .tag(Tab.safety)
-            .tabItem {
-                Label("Safety", systemImage: "exclamationmark.shield")
             }
 
             SettingsPane(title: "Main Window", subtitle: "Channels visible in the main mixer window.") {

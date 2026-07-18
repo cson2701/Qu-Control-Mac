@@ -3,6 +3,7 @@
 Qu Controller can expose its mixer state and controls to LAN clients over a
 plain TCP connection. Enable the relay in Settings, then connect to the Mac's
 LAN address and the configured port. The default port is `51326`.
+The relay listens on all network interfaces.
 
 The protocol uses UTF-8 JSON Lines: each message is one JSON object followed by
 a newline (`\n`). Authentication, encryption, and service discovery are not
