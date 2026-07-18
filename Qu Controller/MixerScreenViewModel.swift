@@ -26,8 +26,14 @@ final class MixerScreenViewModel: ObservableObject {
     @Published private(set) var startHiddenInMenuBar: Bool
     @Published private(set) var showMenuBarIcon: Bool
     @Published private(set) var showSignalIndicators: Bool
+    @Published private(set) var relayEnabled: Bool
+    @Published private(set) var relayBindHost: String
+    @Published private(set) var relayPort: Int
+    @Published private(set) var relayStatusMessage: String
+    @Published private(set) var relayConnectedClientCount: Int
 
     private let controller: MixerController
+    private let relayService: MixerRelayService
     private let defaultHost: String
     private let userDefaults: UserDefaults
     private var cancellables = Set<AnyCancellable>()
@@ -52,6 +58,14 @@ final class MixerScreenViewModel: ObservableObject {
         showMenuBarIcon = AppSettings.loadShowMenuBarIcon(from: userDefaults)
         startHiddenInMenuBar = Self.loadStartHiddenInMenuBar(from: userDefaults)
         showSignalIndicators = Self.loadShowSignalIndicators(from: userDefaults)
+        relayEnabled = Self.loadRelayEnabled(from: userDefaults)
+        relayBindHost = Self.loadRelayBindHost(from: userDefaults)
+        relayPort = Self.loadRelayPort(from: userDefaults)
+
+        let relayService = MixerRelayService(controller: controller)
+        self.relayService = relayService
+        relayStatusMessage = relayService.status.message
+        relayConnectedClientCount = relayService.connectedClientCount
 
         controller.channelsPublisher
             .receive(on: DispatchQueue.main)
@@ -75,7 +89,17 @@ final class MixerScreenViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        relayService.$status
+            .map(\.message)
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$relayStatusMessage)
+
+        relayService.$connectedClientCount
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$relayConnectedClientCount)
+
         updateSignalMonitoringState(for: connectionState)
+        configureRelay()
 
         startInitialConnectionFlowIfNeeded()
     }
@@ -234,6 +258,25 @@ final class MixerScreenViewModel: ObservableObject {
         updateSignalMonitoringState(for: connectionState)
     }
 
+    func setRelayEnabled(_ isEnabled: Bool) {
+        relayEnabled = isEnabled
+        userDefaults.set(isEnabled, forKey: AppSettingsKey.relayEnabled)
+        configureRelay()
+    }
+
+    func setRelayBindHost(_ bindHost: String) {
+        relayBindHost = bindHost
+        userDefaults.set(bindHost, forKey: AppSettingsKey.relayBindHost)
+        configureRelay()
+    }
+
+    func setRelayPort(_ port: Int) {
+        guard (1 ... 65_535).contains(port) else { return }
+        relayPort = port
+        userDefaults.set(port, forKey: AppSettingsKey.relayPort)
+        configureRelay()
+    }
+
     func scanForMixer() {
         guard controller is QuNetworkMixerController, !isScanningForMixer else {
             return
@@ -312,6 +355,27 @@ final class MixerScreenViewModel: ObservableObject {
         }
 
         return userDefaults.bool(forKey: AppSettingsKey.showSignalIndicators)
+    }
+
+    private static func loadRelayEnabled(from userDefaults: UserDefaults) -> Bool {
+        userDefaults.bool(forKey: AppSettingsKey.relayEnabled)
+    }
+
+    private static func loadRelayBindHost(from userDefaults: UserDefaults) -> String {
+        userDefaults.string(forKey: AppSettingsKey.relayBindHost) ?? "0.0.0.0"
+    }
+
+    private static func loadRelayPort(from userDefaults: UserDefaults) -> Int {
+        let storedPort = userDefaults.integer(forKey: AppSettingsKey.relayPort)
+        return (1 ... 65_535).contains(storedPort) ? storedPort : 51_326
+    }
+
+    private func configureRelay() {
+        relayService.configure(
+            isEnabled: relayEnabled,
+            bindHost: relayBindHost,
+            port: relayPort
+        )
     }
 
     private func updateSignalMonitoringState(for state: MixerConnectionState) {

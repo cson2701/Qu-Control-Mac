@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     private enum Tab: Hashable {
         case connection
+        case relay
         case appBehavior
         case safety
         case mainWindow
@@ -17,6 +18,8 @@ struct SettingsView: View {
         switch selectedTab {
         case .connection:
             CGSize(width: 540, height: 250)
+        case .relay:
+            CGSize(width: 560, height: 360)
         case .appBehavior:
             CGSize(width: 540, height: 330)
         case .safety:
@@ -47,6 +50,62 @@ struct SettingsView: View {
             .tag(Tab.connection)
             .tabItem {
                 Label("Connection", systemImage: "network")
+            }
+
+            SettingsPane(title: "Relay", subtitle: "Share this app's mixer connection with LAN clients.") {
+                Form {
+                    Section {
+                        Toggle(
+                            "Enable relay",
+                            isOn: Binding(
+                                get: { viewModel.relayEnabled },
+                                set: viewModel.setRelayEnabled(_:)
+                            )
+                        )
+                    }
+
+                    Section("Listener") {
+                        LabeledContent("Bind host") {
+                            TextField(
+                                "0.0.0.0",
+                                text: Binding(
+                                    get: { viewModel.relayBindHost },
+                                    set: viewModel.setRelayBindHost(_:)
+                                )
+                            )
+                            .frame(width: 180)
+                        }
+
+                        LabeledContent("Port") {
+                            TextField(
+                                "Port",
+                                value: Binding(
+                                    get: { viewModel.relayPort },
+                                    set: viewModel.setRelayPort(_:)
+                                ),
+                                format: .number.grouping(.never)
+                            )
+                            .frame(width: 100)
+                        }
+                    }
+                    .disabled(!viewModel.relayEnabled)
+
+                    Section("Status") {
+                        Text(viewModel.relayStatusMessage)
+
+                        Text("Connected clients: \(viewModel.relayConnectedClientCount)")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text("Use 0.0.0.0 to accept connections on all interfaces. The relay uses newline-delimited JSON without authentication or encryption.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .formStyle(.grouped)
+            }
+            .tag(Tab.relay)
+            .tabItem {
+                Label("Relay", systemImage: "point.3.connected.trianglepath.dotted")
             }
 
             SettingsPane(title: "App Behavior", subtitle: "Launch and window behavior.") {
