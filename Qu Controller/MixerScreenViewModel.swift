@@ -27,7 +27,6 @@ final class MixerScreenViewModel: ObservableObject {
     @Published private(set) var showMenuBarIcon: Bool
     @Published private(set) var showSignalIndicators: Bool
     @Published private(set) var relayEnabled: Bool
-    @Published private(set) var relayBindHost: String
     @Published private(set) var relayPort: Int
     @Published private(set) var relayStatusMessage: String
     @Published private(set) var relayConnectedClientCount: Int
@@ -59,7 +58,6 @@ final class MixerScreenViewModel: ObservableObject {
         startHiddenInMenuBar = Self.loadStartHiddenInMenuBar(from: userDefaults)
         showSignalIndicators = Self.loadShowSignalIndicators(from: userDefaults)
         relayEnabled = Self.loadRelayEnabled(from: userDefaults)
-        relayBindHost = Self.loadRelayBindHost(from: userDefaults)
         relayPort = Self.loadRelayPort(from: userDefaults)
 
         let relayService = MixerRelayService(controller: controller)
@@ -264,12 +262,6 @@ final class MixerScreenViewModel: ObservableObject {
         configureRelay()
     }
 
-    func setRelayBindHost(_ bindHost: String) {
-        relayBindHost = bindHost
-        userDefaults.set(bindHost, forKey: AppSettingsKey.relayBindHost)
-        configureRelay()
-    }
-
     func setRelayPort(_ port: Int) {
         guard (1 ... 65_535).contains(port) else { return }
         relayPort = port
@@ -361,10 +353,6 @@ final class MixerScreenViewModel: ObservableObject {
         userDefaults.bool(forKey: AppSettingsKey.relayEnabled)
     }
 
-    private static func loadRelayBindHost(from userDefaults: UserDefaults) -> String {
-        userDefaults.string(forKey: AppSettingsKey.relayBindHost) ?? "0.0.0.0"
-    }
-
     private static func loadRelayPort(from userDefaults: UserDefaults) -> Int {
         let storedPort = userDefaults.integer(forKey: AppSettingsKey.relayPort)
         return (1 ... 65_535).contains(storedPort) ? storedPort : 51_326
@@ -373,7 +361,6 @@ final class MixerScreenViewModel: ObservableObject {
     private func configureRelay() {
         relayService.configure(
             isEnabled: relayEnabled,
-            bindHost: relayBindHost,
             port: relayPort
         )
     }

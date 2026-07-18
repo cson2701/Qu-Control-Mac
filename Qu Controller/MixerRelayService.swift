@@ -51,7 +51,7 @@ final class MixerRelayService: ObservableObject {
             .store(in: &cancellables)
     }
 
-    func configure(isEnabled: Bool, bindHost: String, port: Int) {
+    func configure(isEnabled: Bool, port: Int) {
         stop()
 
         guard isEnabled else {
@@ -68,31 +68,15 @@ final class MixerRelayService: ObservableObject {
         do {
             let parameters = NWParameters.tcp
             parameters.allowLocalEndpointReuse = true
-
-            let normalizedHost = bindHost.trimmingCharacters(in: .whitespacesAndNewlines)
-            let usesWildcardHost = normalizedHost.isEmpty ||
-                normalizedHost == "0.0.0.0" ||
-                normalizedHost == "::" ||
-                normalizedHost == "*"
-
-            let listener: NWListener
-            if usesWildcardHost {
-                listener = try NWListener(using: parameters, on: networkPort)
-            } else {
-                parameters.requiredLocalEndpoint = .hostPort(
-                    host: NWEndpoint.Host(normalizedHost),
-                    port: networkPort
-                )
-                listener = try NWListener(using: parameters)
-            }
+            let listener = try NWListener(using: parameters, on: networkPort)
 
             self.listener = listener
-            status = Status(phase: .starting, message: "Starting relay on \(displayHost(bindHost)):\(port)")
+            status = Status(phase: .starting, message: "Starting relay on port \(port)")
 
             listener.stateUpdateHandler = { [weak self, weak listener] state in
                 Task { @MainActor [weak self, weak listener] in
                     guard let self, let listener, self.listener === listener else { return }
-                    self.handleListenerState(state, bindHost: bindHost, port: port)
+                    self.handleListenerState(state, port: port)
                 }
             }
             listener.newConnectionHandler = { [weak self, weak listener] connection in
@@ -125,12 +109,12 @@ final class MixerRelayService: ObservableObject {
         connectedClientCount = 0
     }
 
-    private func handleListenerState(_ state: NWListener.State, bindHost: String, port: Int) {
+    private func handleListenerState(_ state: NWListener.State, port: Int) {
         switch state {
         case .ready:
             status = Status(
                 phase: .listening,
-                message: "Listening on \(displayHost(bindHost)):\(port)"
+                message: "Listening on all interfaces, port \(port)"
             )
         case .failed(let error):
             stop()
@@ -291,10 +275,5 @@ final class MixerRelayService: ObservableObject {
         client.connection.stateUpdateHandler = nil
         client.connection.cancel()
         connectedClientCount = clients.count
-    }
-
-    private func displayHost(_ bindHost: String) -> String {
-        let trimmedHost = bindHost.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmedHost.isEmpty || trimmedHost == "*" ? "0.0.0.0" : trimmedHost
     }
 }
