@@ -40,6 +40,15 @@ Set a channel mute state:
 {"type":"setMute","channel":"ch1","isMuted":true}
 ```
 
+Shut down the connected mixer:
+
+```json
+{"type":"shutdownMixer"}
+```
+
+The relay executes shutdown immediately. Clients should require confirmation
+before sending this command because the relay does not provide its own prompt.
+
 Valid channel identifiers are `ch1` through `ch16` and `mainLr`. Successful
 commands are reflected in a subsequent snapshot broadcast to every connected
 client.

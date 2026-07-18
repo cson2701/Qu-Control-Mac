@@ -233,6 +233,10 @@ final class MixerRelayService: ObservableObject {
                     return
                 }
                 controller.setMute(for: channel, isMuted: isMuted)
+            case "shutdownMixer":
+                Task {
+                    await controller.shutdownMixer()
+                }
             default:
                 sendError("Unsupported command type: \(command.type)", to: clientID)
             }
