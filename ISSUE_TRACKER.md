@@ -41,6 +41,9 @@ These are the first delivery tasks for this project:
 | Todo | [#26](https://github.com/cson2701/Qu-Control-Mac/issues/26) | Add USB MIDI support alongside TCP | Add USB MIDI as an alternative mixer transport |
 | Done | [#25](https://github.com/cson2701/Qu-Control-Mac/issues/25) | Menu bar icon won't show when turning on the switch in settings | Menu bar icon only appears on app launch when the setting was already enabled |
 | Done | [#31](https://github.com/cson2701/Qu-Control-Mac/issues/31) | Add relay mode that proxies a single mixer connection to remote clients | Add Mac-hosted relay mode for remote clients |
+| Todo | [#33](https://github.com/cson2701/Qu-Control-Mac/issues/33) | Support custom channel ordering with Main LR pinned last | Persist one custom channel order across both windows while keeping Main LR enabled and last |
+| Todo | [#34](https://github.com/cson2701/Qu-Control-Mac/issues/34) | Advertise the Mac relay as a Bonjour service | Advertise the existing TCP relay for automatic discovery by the companion iOS app |
+| Todo | [#35](https://github.com/cson2701/Qu-Control-Mac/issues/35) | Show connection details from the Connected status chip | Move mixer connection details into a popover that also shows the Mac LAN address |
 
 ## Suggested Execution Order
 
