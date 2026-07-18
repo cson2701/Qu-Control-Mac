@@ -10,6 +10,7 @@ enum AppSettingsKey {
     static let showMenuBarIcon = "settings.showMenuBarIcon"
     static let showSignalIndicators = "settings.showSignalIndicators"
     static let relayEnabled = "relay.enabled"
+    static let startRelayAtLaunch = "relay.startAtLaunch"
     static let relayPort = "relay.port"
 }
 

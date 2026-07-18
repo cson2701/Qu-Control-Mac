@@ -27,6 +27,7 @@ final class MixerScreenViewModel: ObservableObject {
     @Published private(set) var showMenuBarIcon: Bool
     @Published private(set) var showSignalIndicators: Bool
     @Published private(set) var relayEnabled: Bool
+    @Published private(set) var startRelayAtLaunch: Bool
     @Published private(set) var relayPort: Int
     @Published private(set) var relayStatusMessage: String
     @Published private(set) var relayConnectedClientCount: Int
@@ -57,7 +58,10 @@ final class MixerScreenViewModel: ObservableObject {
         showMenuBarIcon = AppSettings.loadShowMenuBarIcon(from: userDefaults)
         startHiddenInMenuBar = Self.loadStartHiddenInMenuBar(from: userDefaults)
         showSignalIndicators = Self.loadShowSignalIndicators(from: userDefaults)
-        relayEnabled = Self.loadRelayEnabled(from: userDefaults)
+        let savedRelayEnabled = Self.loadRelayEnabled(from: userDefaults)
+        let startsRelayAtLaunch = Self.loadStartRelayAtLaunch(from: userDefaults)
+        relayEnabled = savedRelayEnabled && startsRelayAtLaunch
+        startRelayAtLaunch = startsRelayAtLaunch
         relayPort = Self.loadRelayPort(from: userDefaults)
 
         let relayService = MixerRelayService(controller: controller)
@@ -262,6 +266,11 @@ final class MixerScreenViewModel: ObservableObject {
         configureRelay()
     }
 
+    func setStartRelayAtLaunch(_ isEnabled: Bool) {
+        startRelayAtLaunch = isEnabled
+        userDefaults.set(isEnabled, forKey: AppSettingsKey.startRelayAtLaunch)
+    }
+
     func setRelayPort(_ port: Int) {
         guard (1 ... 65_535).contains(port) else { return }
         relayPort = port
@@ -347,6 +356,10 @@ final class MixerScreenViewModel: ObservableObject {
         }
 
         return userDefaults.bool(forKey: AppSettingsKey.showSignalIndicators)
+    }
+
+    private static func loadStartRelayAtLaunch(from userDefaults: UserDefaults) -> Bool {
+        userDefaults.bool(forKey: AppSettingsKey.startRelayAtLaunch)
     }
 
     private static func loadRelayEnabled(from userDefaults: UserDefaults) -> Bool {

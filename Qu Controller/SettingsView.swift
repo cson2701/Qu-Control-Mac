@@ -59,6 +59,15 @@ struct SettingsView: View {
                                 set: viewModel.setRelayEnabled(_:)
                             )
                         )
+
+                        Toggle(
+                            "Start relay automatically at launch",
+                            isOn: Binding(
+                                get: { viewModel.startRelayAtLaunch },
+                                set: viewModel.setStartRelayAtLaunch(_:)
+                            )
+                        )
+                        .disabled(!viewModel.relayEnabled)
                     }
 
                     Section("Listener") {
