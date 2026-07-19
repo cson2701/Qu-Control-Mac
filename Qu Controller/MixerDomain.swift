@@ -330,7 +330,7 @@ struct MixerLayoutPreferences: Equatable, Codable {
         normalizedVisibleChannelIDs(
             visibleChannelIDs: visibleChannelIDs + [channelID],
             order: order,
-            fallback: visibleChannelIDs
+            fallback: []
         )
     }
 
@@ -359,9 +359,19 @@ struct MixerLayoutPreferences: Equatable, Codable {
         order: [MixerChannelID],
         fallback: [MixerChannelID]
     ) -> [MixerChannelID] {
-        let requestedVisibleChannels = Set(visibleChannelIDs + fallback + [.mainLr])
-        return normalizedOrder(from: order, fallback: Self.defaultOrderedChannelIDs)
+        let requestedVisibleChannels = Set(visibleChannelIDs + [.mainLr])
+        let filteredVisibleChannelIDs = normalizedOrder(from: order, fallback: Self.defaultOrderedChannelIDs)
             .filter { requestedVisibleChannels.contains($0) }
+
+        guard !filteredVisibleChannelIDs.isEmpty else {
+            return normalizedVisibleChannelIDs(
+                visibleChannelIDs: fallback,
+                order: order,
+                fallback: []
+            )
+        }
+
+        return filteredVisibleChannelIDs
     }
 
     private static func migratedSurfaceOrder(
