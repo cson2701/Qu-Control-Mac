@@ -298,9 +298,20 @@ private struct ChannelSettingsList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Drag channels to change their order.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(alignment: .center) {
+                Text("Drag channels to change their order.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer(minLength: 12)
+
+                if viewModel.hasCustomChannelOrder(on: surface) {
+                    Button("Reset Order") {
+                        viewModel.resetChannelOrder(on: surface)
+                    }
+                    .controlSize(.small)
+                }
+            }
 
             List {
                 ForEach(viewModel.movableSelectableChannels(for: surface)) { channel in
@@ -344,17 +355,32 @@ private struct ChannelSettingsRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(channel.primaryDisplayName)
+                    .lineLimit(1)
+
+                if let secondaryDisplayName = channel.secondaryDisplayName {
+                    Text(secondaryDisplayName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 12)
+
             Toggle(
-                channel.displayName,
+                "",
                 isOn: Binding(
                     get: { viewModel.isChannelVisible(channel.id, on: surface) },
                     set: { viewModel.setChannelVisibility($0, for: channel.id, on: surface) }
                 )
             )
+            .labelsHidden()
             .toggleStyle(.switch)
             .controlSize(.small)
             .disabled(isMainLR)
         }
-        .frame(minHeight: 30)
+        .frame(minHeight: 36)
     }
 }
