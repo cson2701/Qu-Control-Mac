@@ -253,6 +253,16 @@ final class MixerScreenViewModel: ObservableObject {
         moveChannel(from: firstSource, to: adjustedDestination, on: surface)
     }
 
+    func hasCustomChannelOrder(on surface: MixerLayoutSurface) -> Bool {
+        layoutPreferences.hasCustomOrder(for: surface)
+    }
+
+    func resetChannelOrder(on surface: MixerLayoutSurface) {
+        layoutPreferences.resetOrder(for: surface)
+        persistLayoutPreferences()
+        objectWillChange.send()
+    }
+
     func shutdownMixer() {
         Task {
             await controller.shutdownMixer()

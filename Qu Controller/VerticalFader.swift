@@ -18,18 +18,32 @@ struct VerticalFader: View {
         isEnabled ? "\(channel.level.percentage)%" : "--"
     }
 
+    private var reservedSecondaryLabel: String {
+        channel.channelNumberLabel ?? " "
+    }
+
     var body: some View {
         VStack(spacing: 10) {
-            HStack(spacing: 6) {
-                if showsSignalIndicator {
-                    SignalDot(isActive: isEnabled && channel.hasSignal)
+            VStack(spacing: 2) {
+                HStack(spacing: 6) {
+                    if showsSignalIndicator {
+                        SignalDot(isActive: isEnabled && channel.hasSignal)
+                    }
+
+                    Text(channel.primaryDisplayName)
+                        .font(.headline.weight(.semibold))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
                 }
 
-                Text(channel.displayName)
-                    .font(.headline.weight(.semibold))
-                    .lineLimit(2)
+                Text(channel.secondaryDisplayName ?? reservedSecondaryLabel)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
                     .multilineTextAlignment(.center)
-            }
+                    .opacity(channel.secondaryDisplayName == nil ? 0 : 1)
+                    .accessibilityHidden(channel.secondaryDisplayName == nil)
+                }
             .frame(width: 80)
 
             Text(levelLabel)

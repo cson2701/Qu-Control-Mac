@@ -120,12 +120,32 @@ struct MixerChannelState: Equatable, Identifiable {
     var hasSignal: Bool
     var customName: String?
 
-    var displayName: String {
-        guard let customName, !customName.isEmpty else {
-            return id.defaultDisplayName
+    var hasCustomDisplayName: Bool {
+        guard let customName else {
+            return false
         }
 
-        return customName
+        return !customName.isEmpty
+    }
+
+    var channelNumberLabel: String? {
+        guard id != .mainLr else {
+            return nil
+        }
+
+        return id.defaultDisplayName
+    }
+
+    var primaryDisplayName: String {
+        hasCustomDisplayName ? customName ?? id.defaultDisplayName : id.defaultDisplayName
+    }
+
+    var secondaryDisplayName: String? {
+        hasCustomDisplayName ? channelNumberLabel : nil
+    }
+
+    var displayName: String {
+        primaryDisplayName
     }
 }
 
@@ -255,6 +275,10 @@ struct MixerLayoutPreferences: Equatable, Codable {
         }
     }
 
+    func hasCustomOrder(for surface: MixerLayoutSurface) -> Bool {
+        orderedChannelIDs(for: surface) != Self.defaultOrderedChannelIDs
+    }
+
     func channelIDs(for surface: MixerLayoutSurface) -> [MixerChannelID] {
         switch surface {
         case .mainScreen:
@@ -319,6 +343,15 @@ struct MixerLayoutPreferences: Equatable, Codable {
             mainScreenOrderedChannelIDs = movedChannelIDs
         case .menuBar:
             menuBarOrderedChannelIDs = movedChannelIDs
+        }
+    }
+
+    mutating func resetOrder(for surface: MixerLayoutSurface) {
+        switch surface {
+        case .mainScreen:
+            mainScreenOrderedChannelIDs = Self.defaultOrderedChannelIDs
+        case .menuBar:
+            menuBarOrderedChannelIDs = Self.defaultOrderedChannelIDs
         }
     }
 

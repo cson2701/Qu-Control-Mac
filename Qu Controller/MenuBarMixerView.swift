@@ -156,9 +156,16 @@ private struct HorizontalFaderRow: View {
                             .frame(width: 7, height: 7)
                     }
 
-                    Text(channel.displayName)
+                    Text(channel.primaryDisplayName)
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
+
+                    if let secondaryDisplayName = channel.secondaryDisplayName {
+                        Text(secondaryDisplayName)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
 
                 Spacer(minLength: 0)
