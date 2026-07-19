@@ -286,31 +286,65 @@ private struct ChannelSettingsList: View {
     let surface: MixerLayoutSurface
     @ObservedObject var viewModel: MixerScreenViewModel
 
-    private var channelsTitle: String {
-        switch surface {
-        case .mainScreen:
-            "Choose which channels are visible in the main window."
-        case .menuBar:
-            "Choose which channels are visible in the menu bar window."
-        }
-    }
-
     var body: some View {
-        Form {
-            Text(channelsTitle)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Drag channels to change their order.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            ForEach(viewModel.selectableChannels) { channel in
-                Toggle(
-                    channel.displayName,
-                    isOn: Binding(
-                        get: { viewModel.isChannelVisible(channel.id, on: surface) },
-                        set: { viewModel.setChannelVisibility($0, for: channel.id, on: surface) }
+            List {
+                ForEach(viewModel.movableSelectableChannels(for: surface)) { channel in
+                    ChannelSettingsRow(
+                        channel: channel,
+                        surface: surface,
+                        viewModel: viewModel
                     )
-                )
+                }
+                .onMove { offsets, destination in
+                    viewModel.moveChannels(fromOffsets: offsets, toOffset: destination, on: surface)
+                }
+
+                if let mainLRChannel = viewModel.mainLRSelectableChannel(for: surface) {
+                    ChannelSettingsRow(
+                        channel: mainLRChannel,
+                        surface: surface,
+                        viewModel: viewModel
+                    )
+                }
             }
+            .listStyle(.inset)
+            .scrollContentBackground(.hidden)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color(nsColor: .quaternaryLabelColor).opacity(0.2))
+            )
         }
-        .formStyle(.grouped)
+    }
+}
+
+private struct ChannelSettingsRow: View {
+    let channel: MixerChannelState
+    let surface: MixerLayoutSurface
+    @ObservedObject var viewModel: MixerScreenViewModel
+
+    private var isMainLR: Bool {
+        channel.id == .mainLr
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Toggle(
+                channel.displayName,
+                isOn: Binding(
+                    get: { viewModel.isChannelVisible(channel.id, on: surface) },
+                    set: { viewModel.setChannelVisibility($0, for: channel.id, on: surface) }
+                )
+            )
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .disabled(isMainLR)
+        }
+        .frame(minHeight: 30)
     }
 }
