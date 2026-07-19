@@ -6,13 +6,13 @@ struct SettingsView: View {
         case connection
         case relay
         case appBehavior
-        case mainWindow
-        case menuBar
+        case channels
     }
 
     @ObservedObject var viewModel: MixerScreenViewModel
     let onSetShowMenuBarIcon: (Bool) -> Void
     @State private var selectedTab: Tab = .connection
+    @State private var selectedChannelSurface: MixerLayoutSurface = .mainScreen
     @State private var isShowingRelayPortResetConfirmation = false
 
     private var windowSize: CGSize {
@@ -23,7 +23,7 @@ struct SettingsView: View {
             CGSize(width: 500, height: 520)
         case .appBehavior:
             CGSize(width: 500, height: 580)
-        case .mainWindow, .menuBar:
+        case .channels:
             CGSize(width: 500, height: 600)
         }
     }
@@ -234,23 +234,33 @@ struct SettingsView: View {
                 Label("App", systemImage: "app.badge")
             }
 
-            SettingsPane(title: "Main Window", subtitle: "Channels visible in the main mixer window.") {
-                ChannelSettingsList(surface: .mainScreen, viewModel: viewModel)
-            }
-            .tag(Tab.mainWindow)
-            .tabItem {
-                Label("Main Window", systemImage: "macwindow")
-            }
+            if viewModel.connectionState.phase == .connected {
+                SettingsPane(title: "Channels", subtitle: "Visibility and ordering for each mixer surface.") {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Picker("Surface", selection: $selectedChannelSurface) {
+                            Text("Main Window")
+                                .tag(MixerLayoutSurface.mainScreen)
+                            Text("Menu Bar")
+                                .tag(MixerLayoutSurface.menuBar)
+                        }
+                        .pickerStyle(.segmented)
 
-            SettingsPane(title: "Menu Bar", subtitle: "Channels visible in the menu bar window.") {
-                ChannelSettingsList(surface: .menuBar, viewModel: viewModel)
-            }
-            .tag(Tab.menuBar)
-            .tabItem {
-                Label("Menu Bar", systemImage: "menubar.rectangle")
+                        ChannelSettingsList(surface: selectedChannelSurface, viewModel: viewModel)
+                            .id(selectedChannelSurface)
+                    }
+                }
+                .tag(Tab.channels)
+                .tabItem {
+                    Label("Channels", systemImage: "slider.horizontal.3")
+                }
             }
         }
         .frame(width: windowSize.width, height: windowSize.height)
+        .onChange(of: viewModel.connectionState.phase) { _, newPhase in
+            if newPhase != .connected, selectedTab == .channels {
+                selectedTab = .connection
+            }
+        }
     }
 
     private func copyToPasteboard(_ value: String) {
