@@ -126,6 +126,21 @@ final class MixerScreenViewModel: ObservableObject {
         displayChannels
     }
 
+    func orderedSelectableChannels(for surface: MixerLayoutSurface) -> [MixerChannelState] {
+        let orderedIDs = layoutPreferences.orderedChannelIDs(for: surface)
+        return displayChannels.sorted { lhs, rhs in
+            (orderedIDs.firstIndex(of: lhs.id) ?? 0) < (orderedIDs.firstIndex(of: rhs.id) ?? 0)
+        }
+    }
+
+    func movableSelectableChannels(for surface: MixerLayoutSurface) -> [MixerChannelState] {
+        orderedSelectableChannels(for: surface).filter { $0.id != .mainLr }
+    }
+
+    func mainLRSelectableChannel(for surface: MixerLayoutSurface) -> MixerChannelState? {
+        orderedSelectableChannels(for: surface).first(where: { $0.id == .mainLr })
+    }
+
     private var displayChannels: [MixerChannelState] {
         guard connectionState.phase == .connected else {
             return channels.map { channel in
@@ -220,6 +235,22 @@ final class MixerScreenViewModel: ObservableObject {
         layoutPreferences.setChannelVisibility(isVisible, for: channelID, surface: surface)
         persistLayoutPreferences()
         objectWillChange.send()
+    }
+
+    func moveChannel(from source: Int, to destination: Int, on surface: MixerLayoutSurface) {
+        layoutPreferences.moveChannel(from: source, to: destination, surface: surface)
+        persistLayoutPreferences()
+        objectWillChange.send()
+    }
+
+    func moveChannels(fromOffsets source: IndexSet, toOffset destination: Int, on surface: MixerLayoutSurface) {
+        let sourceIndexes = source.sorted()
+        guard let firstSource = sourceIndexes.first else {
+            return
+        }
+
+        let adjustedDestination = destination > firstSource ? destination - 1 : destination
+        moveChannel(from: firstSource, to: adjustedDestination, on: surface)
     }
 
     func shutdownMixer() {
