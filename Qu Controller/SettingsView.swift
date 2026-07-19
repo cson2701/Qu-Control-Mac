@@ -314,23 +314,16 @@ private struct ChannelSettingsList: View {
             }
 
             List {
-                ForEach(viewModel.movableSelectableChannels(for: surface)) { channel in
+                ForEach(viewModel.orderedSelectableChannels(for: surface)) { channel in
                     ChannelSettingsRow(
                         channel: channel,
                         surface: surface,
                         viewModel: viewModel
                     )
+                    .moveDisabled(channel.id == .mainLr)
                 }
                 .onMove { offsets, destination in
                     viewModel.moveChannels(fromOffsets: offsets, toOffset: destination, on: surface)
-                }
-
-                if let mainLRChannel = viewModel.mainLRSelectableChannel(for: surface) {
-                    ChannelSettingsRow(
-                        channel: mainLRChannel,
-                        surface: surface,
-                        viewModel: viewModel
-                    )
                 }
             }
             .listStyle(.inset)
@@ -381,6 +374,7 @@ private struct ChannelSettingsRow: View {
             .controlSize(.small)
             .disabled(isMainLR)
         }
-        .frame(minHeight: 36)
+        .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+        .contentShape(Rectangle())
     }
 }
