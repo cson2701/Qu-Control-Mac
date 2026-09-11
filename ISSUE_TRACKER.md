@@ -46,6 +46,7 @@ These are the first delivery tasks for this project:
 | Todo | [#35](https://github.com/cson2701/Qu-Control-Mac/issues/35) | Show connection details from the Connected status chip | Move mixer connection details into a popover that also shows the Mac LAN address |
 | Done | [#38](https://github.com/cson2701/Qu-Control-Mac/issues/38) | Add a GEQ Fader Wave show with automatic restoration | Animate the Main LR GEQ as a slow wave and restore all original band gains |
 | Done | [#40](https://github.com/cson2701/Qu-Control-Mac/issues/40) | Make Fader Wave cycles and speed configurable | Add persisted cycle and speed controls with an estimated show duration |
+| Done | [#42](https://github.com/cson2701/Qu-Control-Mac/issues/42) | Expose Fader Wave through the Mac relay | Add remote start and stop commands, state snapshots, and a 16-band wave |
 
 ## Suggested Execution Order
 

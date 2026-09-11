@@ -5,23 +5,28 @@ struct MixerRelayClientCommand: Decodable {
     let channel: MixerChannelID?
     let level: Double?
     let isMuted: Bool?
+    let cycles: Double?
+    let speed: Double?
 }
 
 struct MixerRelayServerMessage: Encodable {
     let type: String
     let connection: MixerRelayConnectionSnapshot?
     let channels: [MixerRelayChannelSnapshot]?
+    let faderWave: FaderWaveState?
     let message: String?
 
     @MainActor
     static func snapshot(
         connectionState: MixerConnectionState,
-        channels: [MixerChannelState]
+        channels: [MixerChannelState],
+        faderWaveState: FaderWaveState
     ) -> MixerRelayServerMessage {
         MixerRelayServerMessage(
             type: "snapshot",
             connection: MixerRelayConnectionSnapshot(connectionState),
             channels: channels.map(MixerRelayChannelSnapshot.init),
+            faderWave: faderWaveState,
             message: nil
         )
     }
@@ -31,6 +36,7 @@ struct MixerRelayServerMessage: Encodable {
             type: "error",
             connection: nil,
             channels: nil,
+            faderWave: nil,
             message: message
         )
     }
