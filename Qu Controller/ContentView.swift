@@ -6,6 +6,7 @@ struct ContentView: View {
     let onSetUseMockConnection: (Bool) -> Void
     @Environment(\.openSettings) private var openSettings
     @State private var isShowingShutdownConfirmation = false
+    @State private var isShowingFaderWaveConfirmation = false
 
     var body: some View {
         Group {
@@ -29,6 +30,22 @@ struct ContentView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This will power off the connected Qu mixer. You will need a hard power reset to turn it back on.")
+        }
+        .confirmationDialog(
+            "Start Fader Wave?",
+            isPresented: $isShowingFaderWaveConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Start Fader Wave") {
+                viewModel.startFaderWave()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "Fader Wave temporarily changes the Main LR graphic EQ and can affect live audio. "
+                    + "Put the mixer in GEQ Fader Flip mode to see its motorized faders move. "
+                    + "The original GEQ values will be restored when the show finishes or is stopped."
+            )
         }
         .background(
             WindowKeyPressHandler(key: "m", modifiers: []) {
@@ -220,37 +237,72 @@ struct ContentView: View {
 
             Spacer(minLength: 0)
 
-            HStack(spacing: 10) {
-                Button {
-                    openSettings()
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.headline)
-                        .frame(width: 32, height: 32)
-                }
-                .buttonStyle(CircularIconButtonStyle(fillColor: Color.secondary.opacity(0.12)))
-                .foregroundStyle(Color.primary)
-                .help("Open settings")
-
-                Button("Disconnect") {
-                    viewModel.toggleConnection()
-                }
-                .buttonStyle(.bordered)
-
-                Button(role: .destructive) {
-                    if viewModel.confirmBeforeShutdown {
-                        isShowingShutdownConfirmation = true
+            VStack(alignment: .trailing, spacing: 5) {
+                HStack(spacing: 10) {
+                    if viewModel.isFaderWaveActive {
+                        Button("Stop Wave") {
+                            viewModel.stopFaderWave()
+                        }
+                        .buttonStyle(.borderedProminent)
                     } else {
-                        viewModel.shutdownMixer()
+                        Button {
+                            isShowingFaderWaveConfirmation = true
+                        } label: {
+                            Label("Fader Wave", systemImage: "waveform.path")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!viewModel.isFaderWaveAvailable)
+                        .help(viewModel.faderWaveState.message)
                     }
-                } label: {
-                    Image(systemName: "power")
-                        .font(.headline)
-                        .frame(width: 32, height: 32)
+
+                    Button {
+                        openSettings()
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.headline)
+                            .frame(width: 32, height: 32)
+                    }
+                    .buttonStyle(CircularIconButtonStyle(fillColor: Color.secondary.opacity(0.12)))
+                    .foregroundStyle(Color.primary)
+                    .help("Open settings")
+
+                    Button("Disconnect") {
+                        viewModel.toggleConnection()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button(role: .destructive) {
+                        if viewModel.confirmBeforeShutdown {
+                            isShowingShutdownConfirmation = true
+                        } else {
+                            viewModel.shutdownMixer()
+                        }
+                    } label: {
+                        Image(systemName: "power")
+                            .font(.headline)
+                            .frame(width: 32, height: 32)
+                    }
+                    .buttonStyle(CircularIconButtonStyle(fillColor: Color.red.opacity(0.12)))
+                    .foregroundStyle(Color.red)
+                    .help("Shut down the connected mixer")
                 }
-                .buttonStyle(CircularIconButtonStyle(fillColor: Color.red.opacity(0.12)))
-                .foregroundStyle(Color.red)
-                .help("Shut down the connected mixer")
+
+                if viewModel.faderWaveState.phase != .ready {
+                    HStack(spacing: 6) {
+                        if viewModel.faderWaveState.phase == .running {
+                            ProgressView(value: viewModel.faderWaveState.progress)
+                                .frame(width: 72)
+                        } else if viewModel.faderWaveState.phase == .restoring {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+
+                        Text(viewModel.faderWaveState.message)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
             }
         }
         .padding(.horizontal, 4)
