@@ -44,7 +44,7 @@ These are the first delivery tasks for this project:
 | Done | [#33](https://github.com/cson2701/Qu-Control-Mac/issues/33) | Support custom channel ordering with Main LR pinned last | Persist separate main-window and menu-bar channel orders while keeping Main LR enabled and last |
 | Todo | [#34](https://github.com/cson2701/Qu-Control-Mac/issues/34) | Advertise the Mac relay as a Bonjour service | Advertise the existing TCP relay for automatic discovery by the companion iOS app |
 | Todo | [#35](https://github.com/cson2701/Qu-Control-Mac/issues/35) | Show connection details from the Connected status chip | Move mixer connection details into a popover that also shows the Mac LAN address |
-| In-progress | [#38](https://github.com/cson2701/Qu-Control-Mac/issues/38) | Add a GEQ Fader Wave show with automatic restoration | Animate the Main LR GEQ as a slow wave and restore all original band gains |
+| Done | [#38](https://github.com/cson2701/Qu-Control-Mac/issues/38) | Add a GEQ Fader Wave show with automatic restoration | Animate the Main LR GEQ as a slow wave and restore all original band gains |
 
 ## Suggested Execution Order
 
