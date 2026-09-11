@@ -9,6 +9,8 @@ enum AppSettingsKey {
     static let startHiddenInMenuBar = "settings.startHiddenInMenuBar"
     static let showMenuBarIcon = "settings.showMenuBarIcon"
     static let showSignalIndicators = "settings.showSignalIndicators"
+    static let faderWaveCycles = "settings.faderWave.cycles"
+    static let faderWaveSpeed = "settings.faderWave.speed"
     static let relayEnabled = "relay.enabled"
     static let startRelayAtLaunch = "relay.startAtLaunch"
     static let relayPort = "relay.port"
@@ -29,6 +31,19 @@ enum AppSettings {
         }
 
         return userDefaults.bool(forKey: AppSettingsKey.startHiddenInMenuBar)
+    }
+
+    static func loadFaderWaveConfiguration(
+        from userDefaults: UserDefaults = .standard
+    ) -> FaderWaveConfiguration {
+        let cycles = userDefaults.object(forKey: AppSettingsKey.faderWaveCycles) == nil
+            ? FaderWaveConfiguration.defaultCycles
+            : userDefaults.double(forKey: AppSettingsKey.faderWaveCycles)
+        let speed = userDefaults.object(forKey: AppSettingsKey.faderWaveSpeed) == nil
+            ? FaderWaveConfiguration.defaultSpeed
+            : userDefaults.double(forKey: AppSettingsKey.faderWaveSpeed)
+
+        return FaderWaveConfiguration(cycles: cycles, speed: speed)
     }
 }
 

@@ -215,7 +215,7 @@ final class QuNetworkMixerController: MixerController {
         }
     }
 
-    func startFaderWave() {
+    func startFaderWave(configuration: FaderWaveConfiguration) {
         guard connectionState.phase == .connected,
               let midiChannel,
               faderWaveTask == nil,
@@ -231,7 +231,8 @@ final class QuNetworkMixerController: MixerController {
 
             await self.runFaderWave(
                 originalValues: originalValues,
-                midiChannel: midiChannel
+                midiChannel: midiChannel,
+                configuration: configuration
             )
         }
     }
@@ -420,13 +421,18 @@ final class QuNetworkMixerController: MixerController {
         return values.count == FaderWaveAnimation.bandCount ? values : nil
     }
 
-    private func runFaderWave(originalValues: [UInt8], midiChannel: UInt8) async {
+    private func runFaderWave(
+        originalValues: [UInt8],
+        midiChannel: UInt8,
+        configuration: FaderWaveConfiguration
+    ) async {
         var animationError: Error?
+        let frameCount = FaderWaveAnimation.frameCount(for: configuration)
 
         do {
-            for frame in 0 ... FaderWaveAnimation.frameCount {
+            for frame in 0 ... frameCount {
                 try Task.checkCancellation()
-                let progress = Double(frame) / Double(FaderWaveAnimation.frameCount)
+                let progress = Double(frame) / Double(frameCount)
 
                 for bandIndex in 0 ..< FaderWaveAnimation.bandCount {
                     try Task.checkCancellation()
@@ -437,14 +443,15 @@ final class QuNetworkMixerController: MixerController {
                         value: FaderWaveAnimation.value(
                             originalValue: originalValues[bandIndex],
                             bandIndex: bandIndex,
-                            progress: progress
+                            progress: progress,
+                            configuration: configuration
                         ),
                         index: UInt8(bandIndex)
                     )
                 }
 
                 storedFaderWaveState = .running(progress: progress)
-                if frame < FaderWaveAnimation.frameCount {
+                if frame < frameCount {
                     try await Task.sleep(for: FaderWaveAnimation.frameInterval)
                 }
             }

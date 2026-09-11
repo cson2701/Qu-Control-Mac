@@ -7,6 +7,7 @@ struct ContentView: View {
     @Environment(\.openSettings) private var openSettings
     @State private var isShowingShutdownConfirmation = false
     @State private var isShowingFaderWaveConfirmation = false
+    @State private var isShowingFaderWaveControls = false
 
     var body: some View {
         Group {
@@ -37,6 +38,7 @@ struct ContentView: View {
             titleVisibility: .visible
         ) {
             Button("Start Fader Wave") {
+                isShowingFaderWaveControls = false
                 viewModel.startFaderWave()
             }
             Button("Cancel", role: .cancel) {}
@@ -246,13 +248,16 @@ struct ContentView: View {
                         .buttonStyle(.borderedProminent)
                     } else {
                         Button {
-                            isShowingFaderWaveConfirmation = true
+                            isShowingFaderWaveControls.toggle()
                         } label: {
                             Label("Fader Wave", systemImage: "waveform.path")
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(!viewModel.isFaderWaveAvailable)
                         .help(viewModel.faderWaveState.message)
+                        .popover(isPresented: $isShowingFaderWaveControls, arrowEdge: .bottom) {
+                            faderWaveControls
+                        }
                     }
 
                     Button {
@@ -306,6 +311,83 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, 4)
+    }
+
+    private var faderWaveControls: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Label("Fader Wave", systemImage: "waveform.path")
+                    .font(.headline)
+
+                Text("Move the Main LR GEQ faders in a wave, then restore their original positions.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 12) {
+                GridRow {
+                    Text("Cycles")
+
+                    Stepper(
+                        value: Binding(
+                            get: { viewModel.faderWaveConfiguration.cycles },
+                            set: viewModel.setFaderWaveCycles(_:)
+                        ),
+                        in: FaderWaveConfiguration.cyclesRange,
+                        step: FaderWaveConfiguration.cyclesStep
+                    ) {
+                        Text(viewModel.faderWaveCyclesLabel)
+                            .monospacedDigit()
+                            .frame(minWidth: 32, alignment: .trailing)
+                    }
+                    .fixedSize()
+                }
+
+                GridRow {
+                    Text("Speed")
+
+                    Stepper(
+                        value: Binding(
+                            get: { viewModel.faderWaveConfiguration.speed },
+                            set: viewModel.setFaderWaveSpeed(_:)
+                        ),
+                        in: FaderWaveConfiguration.speedRange,
+                        step: FaderWaveConfiguration.speedStep
+                    ) {
+                        Text(viewModel.faderWaveSpeedLabel)
+                            .monospacedDigit()
+                            .frame(minWidth: 44, alignment: .trailing)
+                    }
+                    .fixedSize()
+                }
+
+                GridRow {
+                    Text("Duration")
+                    Text(viewModel.faderWaveEstimatedDurationLabel)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Divider()
+
+            HStack {
+                if !viewModel.hasDefaultFaderWaveConfiguration {
+                    Button("Reset") {
+                        viewModel.resetFaderWaveConfiguration()
+                    }
+                }
+
+                Spacer()
+
+                Button("Start Fader Wave") {
+                    isShowingFaderWaveConfirmation = true
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(16)
+        .frame(width: 320)
     }
 
     private static let mainScreenFaderSpacing: CGFloat = 14
