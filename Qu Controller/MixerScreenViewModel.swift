@@ -20,6 +20,7 @@ final class MixerScreenViewModel: ObservableObject {
     @Published var host: String
     @Published private(set) var channels: [MixerChannelState]
     @Published private(set) var connectionState: MixerConnectionState
+    @Published private(set) var faderWaveState: FaderWaveState
     @Published private(set) var layoutPreferences: MixerLayoutPreferences
     @Published private(set) var discoveryState: DiscoveryState = .idle
     @Published private(set) var confirmBeforeShutdown: Bool
@@ -54,6 +55,7 @@ final class MixerScreenViewModel: ObservableObject {
         host = Self.loadLastSuccessfulHost(from: userDefaults) ?? defaultEndpoint.host
         channels = controller.channels
         connectionState = controller.connectionState
+        faderWaveState = controller.faderWaveState
         layoutPreferences = Self.loadLayoutPreferences(from: userDefaults)
         confirmBeforeShutdown = Self.loadConfirmBeforeShutdown(from: userDefaults)
         autoConnectAfterDiscovery = Self.loadAutoConnectAfterDiscovery(from: userDefaults)
@@ -80,6 +82,10 @@ final class MixerScreenViewModel: ObservableObject {
         controller.connectionStatePublisher
             .receive(on: DispatchQueue.main)
             .assign(to: &$connectionState)
+
+        controller.faderWaveStatePublisher
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$faderWaveState)
 
         controller.connectionStatePublisher
             .receive(on: DispatchQueue.main)
@@ -174,6 +180,14 @@ final class MixerScreenViewModel: ObservableObject {
         connectionState.phase == .connected
     }
 
+    var isFaderWaveAvailable: Bool {
+        faderWaveState.phase == .ready
+    }
+
+    var isFaderWaveActive: Bool {
+        faderWaveState.isActive
+    }
+
     var statusMessage: String {
         switch discoveryState {
         case .scanning where connectionState.phase == .disconnected:
@@ -225,6 +239,14 @@ final class MixerScreenViewModel: ObservableObject {
         }
 
         controller.setMute(for: .mainLr, isMuted: !mainLRChannel.isMuted)
+    }
+
+    func startFaderWave() {
+        controller.startFaderWave()
+    }
+
+    func stopFaderWave() {
+        controller.stopFaderWave()
     }
 
     func isChannelVisible(_ channelID: MixerChannelID, on surface: MixerLayoutSurface) -> Bool {

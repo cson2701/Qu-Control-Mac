@@ -17,6 +17,85 @@ struct FaderLevel: Equatable {
     }
 }
 
+struct FaderWaveState: Equatable {
+    enum Phase: Equatable {
+        case unavailable
+        case ready
+        case running
+        case restoring
+        case failed
+    }
+
+    let phase: Phase
+    let progress: Double
+    let message: String
+
+    var isActive: Bool {
+        phase == .running || phase == .restoring
+    }
+
+    static let disconnected = FaderWaveState(
+        phase: .unavailable,
+        progress: 0,
+        message: "Connect to a mixer to use Fader Wave."
+    )
+
+    static func receivingGEQState(receivedBandCount: Int) -> FaderWaveState {
+        FaderWaveState(
+            phase: .unavailable,
+            progress: 0,
+            message: "Receiving Main LR GEQ state (\(receivedBandCount)/\(FaderWaveAnimation.bandCount) bands)."
+        )
+    }
+
+    static let ready = FaderWaveState(
+        phase: .ready,
+        progress: 0,
+        message: "Ready to animate the Main LR GEQ."
+    )
+
+    static func running(progress: Double) -> FaderWaveState {
+        FaderWaveState(
+            phase: .running,
+            progress: progress.clamped(to: 0 ... 1),
+            message: "Fader Wave is running."
+        )
+    }
+
+    static let restoring = FaderWaveState(
+        phase: .restoring,
+        progress: 1,
+        message: "Restoring the original GEQ positions."
+    )
+
+    static func failed(_ message: String) -> FaderWaveState {
+        FaderWaveState(
+            phase: .failed,
+            progress: 0,
+            message: message
+        )
+    }
+}
+
+enum FaderWaveAnimation {
+    static let bandCount = 28
+    static let frameCount = 80
+    static let frameInterval: Duration = .milliseconds(150)
+
+    private static let amplitude = 48.0
+    private static let waveCycleCount = 1.5
+
+    static func value(originalValue: UInt8, bandIndex: Int, progress: Double) -> UInt8 {
+        let boundedProgress = progress.clamped(to: 0 ... 1)
+        let envelope = sin(.pi * boundedProgress)
+        let bandPosition = Double(bandIndex) / Double(bandCount - 1)
+        let phase = 2 * Double.pi * (bandPosition - (boundedProgress * waveCycleCount))
+        let offset = sin(phase) * amplitude * envelope
+        let animatedValue = (Double(originalValue) + offset).rounded()
+        return UInt8(animatedValue.clamped(to: 0 ... 127))
+    }
+}
+
 enum MixerChannelID: String, CaseIterable, Identifiable, Codable {
     case ch1
     case ch2

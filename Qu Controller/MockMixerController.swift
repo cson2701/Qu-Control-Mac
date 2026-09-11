@@ -32,6 +32,8 @@ final class MockMixerController: MixerController {
         message: "Mock controller disconnected",
         endpoint: nil
     )
+    @Published private var storedFaderWaveState = FaderWaveState.disconnected
+    private var faderWaveTask: Task<Void, Never>?
 
     var channels: [MixerChannelState] {
         storedChannels
@@ -41,12 +43,20 @@ final class MockMixerController: MixerController {
         storedConnectionState
     }
 
+    var faderWaveState: FaderWaveState {
+        storedFaderWaveState
+    }
+
     var channelsPublisher: AnyPublisher<[MixerChannelState], Never> {
         $storedChannels.eraseToAnyPublisher()
     }
 
     var connectionStatePublisher: AnyPublisher<MixerConnectionState, Never> {
         $storedConnectionState.eraseToAnyPublisher()
+    }
+
+    var faderWaveStatePublisher: AnyPublisher<FaderWaveState, Never> {
+        $storedFaderWaveState.eraseToAnyPublisher()
     }
 
     func connect(to endpoint: MixerEndpoint) async {
@@ -63,9 +73,13 @@ final class MockMixerController: MixerController {
             message: "Mock controller connected",
             endpoint: endpoint
         )
+        storedFaderWaveState = .ready
     }
 
     func disconnect() {
+        faderWaveTask?.cancel()
+        faderWaveTask = nil
+        storedFaderWaveState = .disconnected
         storedConnectionState = MixerConnectionState(
             phase: .disconnected,
             message: "Mock controller disconnected",
@@ -74,6 +88,9 @@ final class MockMixerController: MixerController {
     }
 
     func shutdownMixer() async {
+        faderWaveTask?.cancel()
+        faderWaveTask = nil
+        storedFaderWaveState = .disconnected
         storedConnectionState = MixerConnectionState(
             phase: .disconnected,
             message: "Mock shutdown complete",
@@ -126,5 +143,49 @@ final class MockMixerController: MixerController {
                 customName: channel.customName
             )
         }
+    }
+
+    func startFaderWave() {
+        guard storedConnectionState.phase == .connected,
+              faderWaveTask == nil else {
+            return
+        }
+
+        storedFaderWaveState = .running(progress: 0)
+        faderWaveTask = Task { @MainActor [weak self] in
+            guard let self else {
+                return
+            }
+
+            do {
+                for frame in 0 ... FaderWaveAnimation.frameCount {
+                    try Task.checkCancellation()
+                    let progress = Double(frame) / Double(FaderWaveAnimation.frameCount)
+                    self.storedFaderWaveState = .running(progress: progress)
+                    if frame < FaderWaveAnimation.frameCount {
+                        try await Task.sleep(for: FaderWaveAnimation.frameInterval)
+                    }
+                }
+            } catch {
+                // Mock cancellation follows the same restoration path as a mixer run.
+            }
+
+            guard self.storedConnectionState.phase == .connected else {
+                self.faderWaveTask = nil
+                return
+            }
+
+            self.storedFaderWaveState = .restoring
+            try? await Task.sleep(for: .milliseconds(300))
+            self.faderWaveTask = nil
+
+            if self.storedConnectionState.phase == .connected {
+                self.storedFaderWaveState = .ready
+            }
+        }
+    }
+
+    func stopFaderWave() {
+        faderWaveTask?.cancel()
     }
 }
