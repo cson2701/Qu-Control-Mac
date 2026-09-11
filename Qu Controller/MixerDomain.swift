@@ -78,7 +78,7 @@ struct FaderWaveState: Equatable {
 }
 
 enum FaderWaveAnimation {
-    static let bandCount = 28
+    static let bandCount = 16
     static let frameInterval: Duration = .milliseconds(150)
     static let frameIntervalSeconds = 0.15
 
