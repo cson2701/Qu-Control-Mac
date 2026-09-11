@@ -20,6 +20,6 @@ protocol MixerController: AnyObject {
     func setLevel(for channelID: MixerChannelID, level: FaderLevel)
     func setMute(for channelID: MixerChannelID, isMuted: Bool)
     func setSignalMonitoringEnabled(_ isEnabled: Bool)
-    func startFaderWave()
+    func startFaderWave(configuration: FaderWaveConfiguration)
     func stopFaderWave()
 }

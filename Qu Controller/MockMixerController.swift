@@ -145,24 +145,25 @@ final class MockMixerController: MixerController {
         }
     }
 
-    func startFaderWave() {
+    func startFaderWave(configuration: FaderWaveConfiguration) {
         guard storedConnectionState.phase == .connected,
               faderWaveTask == nil else {
             return
         }
 
         storedFaderWaveState = .running(progress: 0)
+        let frameCount = FaderWaveAnimation.frameCount(for: configuration)
         faderWaveTask = Task { @MainActor [weak self] in
             guard let self else {
                 return
             }
 
             do {
-                for frame in 0 ... FaderWaveAnimation.frameCount {
+                for frame in 0 ... frameCount {
                     try Task.checkCancellation()
-                    let progress = Double(frame) / Double(FaderWaveAnimation.frameCount)
+                    let progress = Double(frame) / Double(frameCount)
                     self.storedFaderWaveState = .running(progress: progress)
-                    if frame < FaderWaveAnimation.frameCount {
+                    if frame < frameCount {
                         try await Task.sleep(for: FaderWaveAnimation.frameInterval)
                     }
                 }
