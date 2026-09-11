@@ -17,8 +17,8 @@ struct FaderLevel: Equatable {
     }
 }
 
-struct FaderWaveState: Equatable {
-    enum Phase: Equatable {
+struct FaderWaveState: Equatable, Encodable {
+    enum Phase: String, Equatable, Encodable {
         case unavailable
         case ready
         case running

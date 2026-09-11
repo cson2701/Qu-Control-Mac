@@ -52,6 +52,14 @@ final class MixerRelayService: ObservableObject {
             }
             .store(in: &cancellables)
 
+        controller.faderWaveStatePublisher
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.broadcastSnapshot()
+            }
+            .store(in: &cancellables)
+
         pathMonitor.pathUpdateHandler = { [weak self] path in
             var interfaceLabels: [String: String] = [:]
             for interface in path.availableInterfaces {
@@ -238,6 +246,15 @@ final class MixerRelayService: ObservableObject {
                 Task {
                     await controller.shutdownMixer()
                 }
+            case "startFaderWave":
+                guard let cycles = command.cycles, let speed = command.speed,
+                      cycles.isFinite, speed.isFinite else {
+                    sendError("startFaderWave requires finite cycles and speed", to: clientID)
+                    return
+                }
+                controller.startFaderWave(configuration: FaderWaveConfiguration(cycles: cycles, speed: speed))
+            case "stopFaderWave":
+                controller.stopFaderWave()
             default:
                 sendError("Unsupported command type: \(command.type)", to: clientID)
             }
@@ -249,7 +266,11 @@ final class MixerRelayService: ObservableObject {
     private func broadcastSnapshot() {
         guard status.phase == .listening, !clients.isEmpty else { return }
         guard let data = encodedLine(
-            .snapshot(connectionState: controller.connectionState, channels: controller.channels)
+            .snapshot(
+                connectionState: controller.connectionState,
+                channels: controller.channels,
+                faderWaveState: controller.faderWaveState
+            )
         ) else { return }
 
         for clientID in clients.keys {
@@ -259,7 +280,11 @@ final class MixerRelayService: ObservableObject {
 
     private func sendSnapshot(to clientID: UUID) {
         guard let data = encodedLine(
-            .snapshot(connectionState: controller.connectionState, channels: controller.channels)
+            .snapshot(
+                connectionState: controller.connectionState,
+                channels: controller.channels,
+                faderWaveState: controller.faderWaveState
+            )
         ) else { return }
         send(data, to: clientID)
     }
